@@ -1,0 +1,6 @@
+{"tweets": [
+ {"id": "1001", "url": "https://x.com/lp_alice/status/1001", "text": "what bin step are you all using for fresh meme pools on meteora?", "createdAt": "Mon Oct 05 10:00:00 +0000 2026", "likeCount": 12, "replyCount": 9, "viewCount": 2400, "isReply": false, "author": {"userName": "lp_alice", "followers": 4200}},
+ {"id": "1002", "url": "https://x.com/bot_farm/status/1002", "text": "MASSIVE METEORA AIRDROP claim now!!! link in bio", "createdAt": "Mon Oct 05 10:05:00 +0000 2026", "likeCount": 1, "replyCount": 0, "viewCount": 40, "isReply": false, "author": {"userName": "bot_farm", "followers": 30}},
+ {"id": "1003", "url": "https://x.com/SinClair_0000/status/1003", "text": "my own tweet about dlmm", "createdAt": "Mon Oct 05 10:06:00 +0000 2026", "likeCount": 3, "replyCount": 0, "viewCount": 100, "isReply": false, "author": {"userName": "SinClair_0000", "followers": 601}},
+ {"id": "1004", "url": "https://x.com/lp_alice/status/1004", "text": "second tweet from alice", "createdAt": "Mon Oct 05 10:07:00 +0000 2026", "likeCount": 2, "replyCount": 0, "viewCount": 100, "isReply": false, "author": {"userName": "lp_alice", "followers": 4200}}
+]}

@@ -1,0 +1,4 @@
+# Meteora / LP creators to watch (one handle per line, no @ needed).
+# Their new posts are always considered, even if they don't say "meteora".
+# Keep it to ~15: they're combined into one search, so more handles = longer query, not more cost.
+MeteoraAG
