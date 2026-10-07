@@ -38,17 +38,30 @@ def embed(d):
     }
 
 
-def send(payload):
+def send(payload, files=()):
+    """POST to the webhook. `files` are local paths sent as attachments (multipart)."""
     if os.getenv("DRY_RUN"):
-        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        print(json.dumps(payload, indent=2, ensure_ascii=False), *(f"[attach {f}]" for f in files))
         return
+    if files:
+        boundary = "sinclairxbotboundary"
+        parts = [f'--{boundary}\r\nContent-Disposition: form-data; name="payload_json"\r\n'
+                 f"Content-Type: application/json\r\n\r\n{json.dumps(payload)}\r\n".encode()]
+        for i, f in enumerate(files):
+            f = Path(f)
+            parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="files[{i}]"; filename="{f.name}"\r\n'
+                         f"Content-Type: image/png\r\n\r\n".encode() + f.read_bytes() + b"\r\n")
+        data = b"".join(parts) + f"--{boundary}--\r\n".encode()
+        ctype = f"multipart/form-data; boundary={boundary}"
+    else:
+        data, ctype = json.dumps(payload).encode(), "application/json"
     req = urllib.request.Request(
         os.environ["DISCORD_WEBHOOK_URL"],
-        data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json", "User-Agent": "sinclair-x-bot"},
+        data=data,
+        headers={"Content-Type": ctype, "User-Agent": "sinclair-x-bot"},
         method="POST",
     )
-    urllib.request.urlopen(req, timeout=30).read()
+    urllib.request.urlopen(req, timeout=60).read()
 
 
 def main():

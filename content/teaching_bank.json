@@ -1,125 +1,121 @@
 [
   {
-    "pillar": "intro",
-    "text": "been LPing on @MeteoraAG DLMM for a while now.\n\nfrom today, 1 post a day on what actually works:\n- how bins + shapes work\n- safety checks before every pool\n- when to exit\n- real wins and real losses\n\nfollow if you LP or want to start"
-  },
-  {
-    "pillar": "teach",
+    "topic": "teach",
     "text": "DLMM in one tweet:\n\ninstead of spreading liquidity across every price, it splits price into bins.\n\nyou pick which bins hold your liquidity. only bins that price trades through earn fees.\n\ntighter range = more fees per $\nbut price leaves your range faster"
   },
   {
-    "pillar": "safety",
+    "topic": "safety",
     "text": "volume is not safety.\n\na pool can do $5M volume and still be:\n- bundled supply\n- wash traded\n- one dev wallet away from zero\n\nvolume tells you fees are possible. it tells you nothing about whether the token survives the day"
   },
   {
-    "pillar": "teach",
+    "topic": "teach",
     "text": "bin step = the price gap between bins, in basis points.\n\n100 bps = 1%\n\nsmall bin step: tight spacing, better for calmer pairs\nbig bin step: wide spacing, survives volatility\n\nmatching bin step to how much the token moves is half the game"
   },
   {
-    "pillar": "myth",
+    "topic": "myth",
     "text": "the LP formula nobody tweets:\n\nnet = fees + price change - divergent loss - costs\n\ngreen fees is not a green position.\n\nif price dumps through your range you end up holding the token that dumped. fees have to outrun that"
   },
   {
-    "pillar": "teach",
+    "topic": "teach",
     "text": "3 DLMM shapes, 3 different bets:\n\nspot: liquidity spread evenly. works in most conditions\ncurve: stacked in the middle. best when price stays calm\nbid-ask: stacked at the edges. catches big swings, DCA in/out\n\npick the shape from your thesis, not from someone's screenshot"
   },
   {
-    "pillar": "safety",
+    "topic": "safety",
     "text": "rule #1 before any meteora pool:\n\ncopy the CA from a trusted source. never search by ticker.\n\nthere are always 5 tokens with the same name. the fake one usually has the most \"volume\""
   },
   {
-    "pillar": "safety",
+    "topic": "safety",
     "text": "same token, different pools, different risk.\n\nbefore depositing check the exact pool:\n- bin step\n- base fee\n- liquidity\n- LP lock for THAT pool\n\n\"LP locked\" on a token page can be talking about a different pool"
   },
   {
-    "pillar": "myth",
+    "topic": "myth",
     "text": "mint + freeze authority revoked?\n\ngood. still not safe.\n\nit removes 2 ways the dev can hurt you. it doesn't stop:\n- insiders dumping\n- bundled wallets\n- the narrative dying\n\nchecklists reduce risk. none of them remove it"
   },
   {
-    "pillar": "valhalla",
-    "review": true,
-    "text": "part of my DLMM book is now copy-LP through Valhalla.\n\nI pick wallets with a long closed-position history, not one lucky week. it opens and closes for me, I still review what it enters.\n\nreply \"ref\" if you want to try it"
+    "topic": "valhalla",
+    "text": "part of my DLMM book is now copy-LP through Valhalla.\n\nI pick wallets with a long closed-position history, not one lucky week. it opens and closes for me, I still review what it enters.\n\nreply \"ref\" if you want to try it",
+    "review": true
   },
   {
-    "pillar": "teach",
+    "topic": "teach",
     "text": "your position went out of range. now what?\n\nnot panic. options:\n- hold and wait for price to come back\n- withdraw and re-enter around the new price\n- zap out to SOL\n- close and move on\n\nwhich one depends on one thing: is your thesis still true?"
   },
   {
-    "pillar": "safety",
+    "topic": "safety",
     "text": "60 seconds on bubblemaps before every LP.\n\nlooking for:\n- clusters of wallets funded from the same source\n- top holders linked to the dev\n- big bubbles that aren't the LP pool\n\nif the map looks like a spiderweb, you're the exit liquidity"
   },
   {
-    "pillar": "myth",
+    "topic": "myth",
     "text": "a 5% fee pool is not 5x better than a 1% fee pool.\n\nhigh fees usually exist because the token is extremely volatile.\n\nthe question isn't \"how high is the fee\"\nit's \"will real flow pay me more than the inventory I'll lose\""
   },
   {
-    "pillar": "mindset",
+    "topic": "mindset",
     "text": "before I open any position I write down 5 things:\n\n1. why this pool\n2. size\n3. range + shape\n4. what makes me close\n5. max loss\n\ntakes 2 minutes. saves me from every emotional exit"
   },
   {
-    "pillar": "teach",
+    "topic": "teach",
     "text": "small meteora detail most new LPs miss:\n\ncreating a new pool or bin arrays = rent you don't get back\nopening a position = rent you DO get back when you close it\n\nclosing old dust positions isn't pointless. you're reclaiming SOL"
   },
   {
-    "pillar": "safety",
+    "topic": "safety",
     "text": "spotting fake volume in 3 checks:\n\n1. volume is insanely high vs the liquidity\n2. very few unique traders\n3. huge volume but price barely moves\n\nreal flow is messy. fake flow is suspiciously smooth"
   },
   {
-    "pillar": "safety",
+    "topic": "safety",
     "text": "check the pool price vs jupiter before depositing.\n\nif the meteora pool is priced off from the rest of the market, arb bots will fix it through your liquidity.\n\nand you'll be the cheap side of that trade"
   },
   {
-    "pillar": "mindset",
+    "topic": "mindset",
     "text": "the best LPs I know try to kill the trade before they take it.\n\nthey look for reasons NOT to enter first.\n\nif the pool survives that, they size small.\n\nprocess > prediction"
   },
   {
-    "pillar": "teach",
+    "topic": "teach",
     "text": "why your PnL card says one thing and your wallet says another:\n\nsome tools show PnL in USD. if SOL moved while you were in, the USD number moved too, even if your SOL result didn't.\n\nalways know which unit you're measuring in"
   },
   {
-    "pillar": "question",
+    "topic": "question",
     "text": "LPs: what's your default shape for fresh memecoin pools?\n\nspot / curve / bid-ask\n\nand what bin step?\n\ncurious what's actually working for people right now"
   },
   {
-    "pillar": "data",
+    "topic": "data",
     "text": "meteora LPs earned ~$140M in fees in H1 2026 on ~$32B of volume.\n\n~75% of those fees came from tokens NOT launched on meteora.\n\nLP isn't just a memecoin side quest. it's where solana's trading volume pays out"
   },
   {
-    "pillar": "teach",
+    "topic": "teach",
     "text": "one-sided SOL bid-ask under a token = DCA-ing into it as it drops, and earning fees while you do.\n\nthe catch: if it keeps dropping, you end up 100% in the token.\n\nonly run it on tokens you'd actually be ok holding"
   },
   {
-    "pillar": "mindset",
+    "topic": "mindset",
     "text": "testing a new LP strategy? size it like you expect it to fail.\n\n- small first position\n- wider downside range\n- write down what happened\n\nscale only after it works more than once"
   },
   {
-    "pillar": "valhalla",
-    "review": true,
-    "text": "what I check before copying a wallet's LP on Valhalla:\n\n- 50+ closed positions, not 5\n- consistent wins, not one 10x\n- sizing that doesn't blow up on one rug\n- still active this week\n\ncopying is easy. picking who to copy is the skill. reply \"ref\" for my link"
+    "topic": "valhalla",
+    "text": "what I check before copying a wallet's LP on Valhalla:\n\n- 50+ closed positions, not 5\n- consistent wins, not one 10x\n- sizing that doesn't blow up on one rug\n- still active this week\n\ncopying is easy. picking who to copy is the skill. reply \"ref\" for my link",
+    "review": true
   },
   {
-    "pillar": "myth",
+    "topic": "myth",
     "text": "\"fees are green so I'll hold\"\n\nmost expensive sentence in LP.\n\nfees can be +20% while the position is -40% because the token dumped through your range.\n\nlook at net, not fees"
   },
   {
-    "pillar": "teach",
+    "topic": "teach",
     "text": "meteora tip: zap out has a bin limit.\n\nif your position is very wide, zap out may not work in one go. withdraw normally, then swap on jupiter.\n\nknow this before you need it, not mid-dump"
   },
   {
-    "pillar": "teach",
+    "topic": "teach",
     "text": "my LP stack, all free:\n\ndexscreener: find flow\ngmgn: holders + dev\nbubblemaps: wallet clusters\nrugcheck: authorities\njupiter: price check\nmeteora: enter + manage\nmetlex: PnL cards\n\nno tool tells you \"safe\". each one answers one question"
   },
   {
-    "pillar": "teach",
+    "topic": "teach",
     "text": "close or reassess when:\n- price leaves your range\n- fee flow dies\n- volume starts looking fake\n- pool price drifts from the market\n- your reason for entering isn't true anymore\n\n\"it might come back\" is not on the list"
   },
   {
-    "pillar": "teach",
+    "topic": "teach",
     "text": "DLMM vs DAMM v2 on meteora:\n\nDLMM: bins, you choose range + shape. more control, more babysitting\nDAMM v2: simpler AMM, configurable fee schedules, NFT positions\n\nwatching charts all day? DLMM\nwant less management? look at DAMM v2"
   },
   {
-    "pillar": "mindset",
-    "review": true,
-    "text": "my rules for posting PnL here:\n\n- I'll show losers too, not just green cards\n- tx so you can verify\n- the setup, not just the number\n\nif someone only ever posts wins, ask what they're not showing you"
+    "topic": "mindset",
+    "text": "my rules for posting PnL here:\n\n- I'll show losers too, not just green cards\n- tx so you can verify\n- the setup, not just the number\n\nif someone only ever posts wins, ask what they're not showing you",
+    "review": true
   }
 ]
