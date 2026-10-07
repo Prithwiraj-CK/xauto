@@ -1,14 +1,17 @@
-"""Post the next tweet from content/queue.json. Run once a day.
+"""Send today's tweet from content/queue.json to Discord with a one-tap "Post on X" link. Run once a day.
 
-Env: X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_SECRET
-     DRY_RUN=1  -> print instead of posting
+Env: DISCORD_WEBHOOK_URL
+     DRY_RUN=1  -> print instead of sending
      CHECK=1    -> only validate tweet lengths in the queue
 """
 import json
 import os
 import sys
+import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
+
+from send_discord import send
 
 ROOT = Path(__file__).parent
 QUEUE = ROOT / "content" / "queue.json"
@@ -41,34 +44,33 @@ def main():
     state = json.loads(STATE.read_text())
     i = state["next_index"]
     if i >= len(queue):
-        print("Queue empty: add more tweets to content/queue.json")
+        send({"content": "⚠️ Tweet queue is empty: add more to `content/queue.json`"})
+        print("Queue empty")
         sys.exit(1)
 
-    text = queue[i]["text"]
+    item = queue[i]
+    text = item["text"]
     if x_length(text) > MAX_LEN:
         print(f"Tweet {i} is over {MAX_LEN} chars, fix it first")
         sys.exit(1)
 
+    link = "https://x.com/intent/tweet?" + urllib.parse.urlencode(
+        {"text": text}, quote_via=urllib.parse.quote
+    )
+    note = "\n\n⚠️ *makes claims about you, check it's true before posting*" if item.get("review") else ""
+    send({
+        "content": f"**📅 Today's tweet ({i + 1}/{len(queue)})**",
+        "embeds": [{
+            "description": f"{text}{note}\n\n**[🚀 Post on X]({link})**",
+            "color": 0x1D9BF0,
+        }],
+    })
+    print(f"Sent tweet {i} to Discord")
+
     if os.getenv("DRY_RUN"):
-        print(f"[dry run] tweet {i}:\n{text}")
         return
-
-    import tweepy
-
-    client = tweepy.Client(
-        consumer_key=os.environ["X_API_KEY"],
-        consumer_secret=os.environ["X_API_SECRET"],
-        access_token=os.environ["X_ACCESS_TOKEN"],
-        access_token_secret=os.environ["X_ACCESS_SECRET"],
-    )
-    resp = client.create_tweet(text=text)
-    tweet_id = resp.data["id"]
-    print(f"Posted tweet {i}: https://x.com/i/status/{tweet_id}")
-
     state["next_index"] = i + 1
-    state["posted"].append(
-        {"index": i, "id": tweet_id, "at": datetime.now(timezone.utc).isoformat()}
-    )
+    state["posted"].append({"index": i, "at": datetime.now(timezone.utc).isoformat()})
     STATE.write_text(json.dumps(state, indent=2) + "\n")
 
 
