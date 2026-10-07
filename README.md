@@ -3,38 +3,40 @@
 Everything arrives in Discord with a one-tap link that opens X with the text filled in.
 No X API, no X developer account. You press Post yourself.
 
-- **Daily tweet** (`post.py`, GitHub Actions, 14:00 UTC / 7:30 PM IST): next tweet from
-  `content/queue.json` → Discord "🚀 Post on X".
-- **Reply drafts** (`scan.py` → Claude → `send_discord.py`, Claude cloud routine, 4x/day): fresh
-  Meteora/LP tweets → drafted replies → Discord "✍️ Reply on X". Steps in `ROUTINE.md`.
+- **Daily post** (Claude cloud routine, 1x/day, steps in `DAILY_POST.md`): Claude picks a post type
+  from `content/PLAN.md` (pool research, safety breakdown, teaching, journey, question…), pulls live
+  Meteora DLMM data, draws a chart for pool posts, writes the post → Discord "🚀 Post on X" + image.
+- **Reply drafts** (Claude cloud routine, 4x/day, steps in `ROUTINE.md`): fresh Meteora/LP tweets →
+  drafted replies → Discord "✍️ Reply on X".
 
-Cost: twitterapi.io reads ~$1.50/month. Everything else is free.
+Cost: twitterapi.io reads ~$1.50/month. Meteora + RugCheck data are free. Claude runs on your plan.
 
-## Setup
+## Files
 
-1. Discord: Server Settings → Integrations → Webhooks → New Webhook → copy URL.
-2. GitHub repo → Settings → Secrets and variables → Actions → add `DISCORD_WEBHOOK_URL`.
-3. GitHub repo → Settings → Actions → General → Workflow permissions → **Read and write**
-   (so it can save progress in `content/state.json`).
-4. Actions tab → `daily-tweet` → **Run workflow** once to test. After that it runs daily.
-5. Reply helper: claude.ai/code cloud environment → env vars `TWITTERAPI_KEY`,
-   `DISCORD_WEBHOOK_URL`; network access allows `api.twitterapi.io` and `discord.com`.
+| file | what |
+|---|---|
+| `content/PLAN.md` | post types, mix, voice and rules: edit this to change what gets posted |
+| `content/teaching_bank.json` | evergreen teaching posts Claude can use or adapt |
+| `knowledge/lp-notes.md` | LP Army Academy + Meteora notes Claude writes from |
+| `research.py` | `scan` top pools (fee/TVL, volume, safety) · `chart <address>` → `out/chart.png` |
+| `history.py` | your recent tweets, so posts don't repeat |
+| `send_post.py` / `send_discord.py` | send the daily post / reply drafts to Discord |
+| `scan.py`, `REPLY_GUIDE.md`, `config/creators.txt` | reply helper |
 
-## Editing content
+## Cloud environment (claude.ai/code → Default environment)
 
-- Edit / reorder / append to `content/queue.json`. Entries with `"review": true` make claims
-  about *your* setup (Valhalla, PnL rules): check they're true for you before they go out.
-- Validate lengths: `CHECK=1 python3 post.py`
-- Preview next post: `DRY_RUN=1 python3 post.py`
-- **No links in queued tweets**: X shows link posts to fewer people. Send your referral link by hand to people who reply "ref".
+- Env vars: `TWITTERAPI_KEY`, `DISCORD_WEBHOOK_URL`
+- Network access: `api.twitterapi.io`, `discord.com`, `dlmm.datapi.meteora.ag`, `api.rugcheck.xyz`,
+  plus PyPI (for `pip install matplotlib`)
+
+## Posting with an image
+
+Discord shows the image above the link. On your phone: long-press the image → Save, tap
+**Post on X**, tap the image icon in X, pick it, Post.
 
 ## Growth playbook
 
-- **Referral**: the Valhalla tweets say `reply "ref"`. Send your link to whoever replies
-  (reply or DM by hand; free, and allowed because they asked).
+- **Referral**: Valhalla posts say `reply "ref"`. Send your link to whoever replies (by hand).
 - **First 30 min after each post**: reply to every comment. Early replies are the biggest reach signal.
-- **Wins**: post real PnL cards manually from the app when you have one (free). Include the
-  tx/setup; occasionally post a loss. Credibility is what makes the referral link convert.
-- **Engage**: reply thoughtfully to Meteora / LP Army / DLMM creators a few times a day by hand.
-  No shilling in replies; your profile does that.
-- **Valhalla mentions**: max ~1 in 7 posts. More reads as an ad account.
+- **Wins**: post real PnL cards when you have one, with the setup. Occasionally post a loss.
+- **Engage**: use the reply drafts. No shilling in replies; your profile does that.
