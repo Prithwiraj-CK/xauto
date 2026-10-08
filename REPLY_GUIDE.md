@@ -4,7 +4,7 @@ The account: a Meteora DLMM LP who teaches what works. Replies exist to get noti
 Meteora/LP creators and their audiences by adding something useful. Not to sell.
 
 ## Pick
-- Draft for at most **5** candidates per run. Fewer is fine; zero is fine.
+- Draft for at most **4** candidates on the 1 PM IST run and **2** on the others (~10/day). Fewer is fine; zero is fine.
 - **Skip**: giveaways, "airdrop claim" / wallet-drainer bait, obvious bots or engagement farms,
   token shills with nothing to say, price-only posts, anything you'd be embarrassed to be
   seen replying to, non-English, and tweets where you have nothing real to add.

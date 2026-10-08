@@ -2,7 +2,8 @@
 
 Env: TWITTERAPI_KEY   (twitterapi.io)
      MY_HANDLE        default SinClair_0000 (excluded from results)
-     WINDOW_HOURS     default 6 (matches 4 runs/day, so no tweet is seen twice)
+     RUN_SLOTS_UTC    run times as decimal UTC hours, default "7.5,9.5,14.5,17.5" (1, 3, 8, 11 PM IST).
+                      Each run looks back to the previous slot, so no tweet is seen twice.
      MOCK=1           use tests/mock_search.json instead of calling the API
 """
 import json
@@ -20,9 +21,9 @@ CREATORS = ROOT / "config" / "creators.txt"
 API = "https://api.twitterapi.io/twitter/tweet/advanced_search"
 
 ME = os.getenv("MY_HANDLE", "SinClair_0000")
-WINDOW_HOURS = float(os.getenv("WINDOW_HOURS", "6"))
+SLOTS = sorted(float(x) for x in os.getenv("RUN_SLOTS_UTC", "7.5,9.5,14.5,17.5").split(","))
 MAX_PAGES = 2  # ~20 tweets/page, ~$0.003/page
-MAX_CANDIDATES = 8
+MAX_CANDIDATES = 10
 
 KEYWORDS = '(meteora OR dlmm OR "lp army" OR #LPArmy OR "damm v2" OR "meteora pool")'
 BASE_FILTERS = f"-filter:replies -filter:retweets -from:{ME}"
@@ -68,8 +69,16 @@ def score(t):
     return engagement + 5 * size
 
 
+def window_hours():
+    """Hours since the previous scheduled slot (runs can start a few minutes late)."""
+    now = datetime.now(timezone.utc)
+    h = now.hour + now.minute / 60 + 0.25  # tolerate a late start
+    prev = max((s for s in SLOTS if s < h), default=SLOTS[-1] - 24)
+    return h - prev
+
+
 def main():
-    since = int(time.time() - WINDOW_HOURS * 3600)
+    since = int(time.time() - window_hours() * 3600)
     window = f"since_time:{since}"
     queries = [f"{KEYWORDS} {BASE_FILTERS} lang:en {window}"]
     creators = load_creators()

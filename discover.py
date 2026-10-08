@@ -60,7 +60,9 @@ def main():
 
     ranked = []
     for name, d in authors.items():
-        if d["followers"] < 300:  # skip tiny / bot accounts
+        if d["followers"] < 300 or d["followers"] > 1_000_000:  # tiny/bot accounts, and giant generic ones
+            continue
+        if d["likes"] / d["posts"] < 3:  # posts a lot but nobody engages: repost bots / spam
             continue
         # posting about meteora repeatedly matters most; then engagement; then reach (capped so giants don't dominate)
         d["score"] = round(d["posts"] * 4 + math.log1p(d["likes"] + 3 * d["replies"]) * 2 + min(math.log10(d["followers"]), 5), 2)

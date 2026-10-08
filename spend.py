@@ -22,7 +22,9 @@ def balance_usd():
     req = urllib.request.Request("https://api.twitterapi.io/oapi/my/info",
                                  headers={"X-API-Key": os.environ["TWITTERAPI_KEY"]})
     with urllib.request.urlopen(req, timeout=30) as r:
-        return json.load(r)["recharge_credits"] / CREDITS_PER_USD
+        d = json.load(r)
+    # bonus credits are spent first, so count both or early runs look free
+    return (d.get("recharge_credits", 0) + d.get("total_bonus_credits", 0)) / CREDITS_PER_USD
 
 
 def main():
