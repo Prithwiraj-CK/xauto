@@ -112,7 +112,9 @@ def main():
             per_author[author] = True
             picked.append(t)
 
-    picked.sort(key=score, reverse=True)
+    watch = {c.lower() for c in creators}
+    is_watch = lambda t: t["author"]["userName"].lower() in watch
+    picked.sort(key=lambda t: (is_watch(t), score(t)), reverse=True)  # watchlist creators first
     out = [
         {
             "id": t["id"],
@@ -122,6 +124,7 @@ def main():
             "likes": t.get("likeCount", 0),
             "replies": t.get("replyCount", 0),
             "views": t.get("viewCount", 0),
+            "watchlist": is_watch(t),
             "text": t["text"],
         }
         for t in picked[:MAX_CANDIDATES]

@@ -30,9 +30,7 @@ def embed(d):
     if d.get("why"):
         parts.append(f"*{d['why']}*")
     parts.append(
-        f"**[✍️ Reply]({intent_url(d['id'], d['reply'])})** · "
-        f"**[❤️ Like](https://x.com/intent/like?tweet_id={d['id']})** · "
-        f"**[🔁 Repost](https://x.com/intent/retweet?tweet_id={d['id']})** · [open tweet]({d['url']})"
+        f"**[✍️ Reply]({intent_url(d['id'], d['reply'])})** · [open tweet]({d['url']})"
     )
     return {
         "title": f"@{d['author']}",
