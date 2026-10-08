@@ -1,6 +1,6 @@
 # Meteora / LP creators to watch (one handle per line, no @ needed).
 # Their new posts are always considered, even if they don't say "meteora".
-# Keep it to ~15: they're combined into one search, so more handles = longer query, not more cost.
+# Searched in groups of 11 handles: each extra group adds one search (~$0.003-0.006 per run).
 MeteoraAG
 MCGlive
 met_lparmy
@@ -16,3 +16,11 @@ AfterHoursDAO
 byJamesMarston
 Defi_Sharks
 jussy_world
+# from the LP Army #tweets channel (last 30 days)
+NaojNc
+Tuuxxdotsol
+JP0RTA
+drbluechip
+blitoxbt
+tro7aocripto
+ArtueroY

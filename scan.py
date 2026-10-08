@@ -32,6 +32,7 @@ ME = os.getenv("MY_HANDLE", "SinClair_0000")
 SLOTS = sorted(float(x) for x in os.getenv("RUN_SLOTS_UTC", "7.5,9.5,14.5,17.5").split(","))
 MAX_PAGES = 2  # ~20 tweets/page, ~$0.003/page
 MAX_CANDIDATES = 10
+CREATORS_PER_QUERY = 11
 
 KEYWORDS = '(meteora OR dlmm OR "lp army" OR #LPArmy OR "damm v2" OR "meteora pool")'
 BASE_FILTERS = f"-filter:replies -filter:retweets -from:{ME}"
@@ -78,10 +79,12 @@ def score(t):
 
 
 def window_hours():
-    """Hours since the previous scheduled slot (runs can start a few minutes late)."""
+    """Hours since the slot before this run's slot (runs can start a few minutes late)."""
     now = datetime.now(timezone.utc)
-    h = now.hour + now.minute / 60 + 0.25  # tolerate a late start
-    prev = max((s for s in SLOTS if s < h), default=SLOTS[-1] - 24)
+    h = now.hour + now.minute / 60
+    slots = [s - 24 for s in SLOTS] + SLOTS
+    current = max(s for s in slots if s <= h + 0.25)  # tolerate starting up to 15 min early
+    prev = max(s for s in slots if s < current)
     return h - prev
 
 
@@ -90,8 +93,8 @@ def main():
     window = f"since_time:{since}"
     queries = [f"{KEYWORDS} {BASE_FILTERS} lang:en {window}"]
     creators = load_creators()
-    if creators:
-        from_any = " OR ".join(f"from:{c}" for c in creators)
+    for i in range(0, len(creators), CREATORS_PER_QUERY):  # keep each search query a sane length
+        from_any = " OR ".join(f"from:{c}" for c in creators[i : i + CREATORS_PER_QUERY])
         queries.append(f"({from_any}) {BASE_FILTERS} {window}")
 
     seen, picked = set(), []
