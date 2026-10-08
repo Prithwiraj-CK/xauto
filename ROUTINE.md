@@ -1,5 +1,7 @@
 # Reply-helper routine (run 4x/day)
 
+Each draft in Discord gets ✍️ Reply · ❤️ Like · 🔁 Repost links; the human taps them. Never post, like or repost via any API.
+
 Run these steps in the repo root. Do not commit or push anything.
 
 1. `python3 scan.py`

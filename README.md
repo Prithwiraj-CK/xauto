@@ -22,6 +22,7 @@ Cost: twitterapi.io reads ~$1.50/month. Meteora + RugCheck data are free. Claude
 | `history.py` | your recent tweets, so posts don't repeat |
 | `send_post.py` / `send_discord.py` | send the daily post / reply drafts to Discord |
 | `scan.py`, `REPLY_GUIDE.md`, `config/creators.txt` | reply helper |
+| `discover.py` | find & rank accounts posting about Meteora → `--apply` adds top 15 to `creators.txt` |
 
 ## Cloud environment (claude.ai/code → Default environment)
 
