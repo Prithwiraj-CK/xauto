@@ -1,11 +1,13 @@
-"""Live Meteora DLMM pool research + chart images. No API key needed.
+"""Live Meteora DLMM pool research + chart images. No API keys needed.
 
-  python3 research.py scan            -> out/pools.json   (top pools by fee/TVL, with safety data)
-  python3 research.py chart <address> -> out/chart.png    (72h price + volume, stats panel)
+  python3 research.py scan            -> out/pools.json       top pools by fee/TVL, with flow + safety data
+  python3 research.py chart <address> -> out/chart.png        candles, VPVR, RSI, example LP range, stats panel
+                                         out/chart_pool.json  every number on the chart + the strategy idea
 
-Data: Meteora DLMM data API (dlmm.datapi.meteora.ag) + RugCheck summary (api.rugcheck.xyz).
+Data: Meteora DLMM data API, DexScreener API, RugCheck summary.
 """
 import json
+import math
 import sys
 import time
 import urllib.parse
@@ -16,6 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 OUT = ROOT / "out"
 METEORA = "https://dlmm.datapi.meteora.ag"
+DEXSCREENER = "https://api.dexscreener.com/latest/dex/pairs/solana/"
 RUGCHECK = "https://api.rugcheck.xyz/v1/tokens/{}/report/summary"
 QUOTES = {"So11111111111111111111111111111111111111112", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
           "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"}
@@ -34,22 +37,46 @@ def rugcheck(mint):
         d = get(RUGCHECK.format(mint))
         return {
             "score_normalised": d.get("score_normalised"),
-            "lp_locked_pct": d.get("lpLockedPct"),
+            "lp_locked_pct": round(d.get("lpLockedPct") or 0, 1),
             "risks": [f"{r.get('level')}: {r.get('name')}" for r in d.get("risks", [])],
         }
     except Exception as e:  # rugcheck is rate-limited / flaky; research continues without it
         return {"error": str(e)}
 
 
+def dexscreener(addresses):
+    """Flow data (buys/sells, price change, socials) for up to 30 pools in one call."""
+    try:
+        pairs = get(DEXSCREENER + ",".join(addresses)).get("pairs") or []
+    except Exception:
+        return {}
+    out = {}
+    for p in pairs:
+        tx = p.get("txns", {})
+        out[p["pairAddress"]] = {
+            "price_usd": float(p["priceUsd"]) if p.get("priceUsd") else None,
+            "price_change_pct": p.get("priceChange", {}),
+            "txns_24h": tx.get("h24", {}),
+            "txns_1h": tx.get("h1", {}),
+            "volume_1h": (p.get("volume") or {}).get("h1"),
+            "has_website": bool((p.get("info") or {}).get("websites")),
+            "has_twitter": any(s.get("type") == "twitter" for s in (p.get("info") or {}).get("socials", [])),
+            "dexscreener_url": p.get("url"),
+        }
+    return out
+
+
 def summarize(p):
-    base, quote = (p["token_x"], p["token_y"]) if p["token_x"]["address"] not in QUOTES else (p["token_y"], p["token_x"])
+    base_is_x = p["token_x"]["address"] not in QUOTES
+    base, quote = (p["token_x"], p["token_y"]) if base_is_x else (p["token_y"], p["token_x"])
     age_h = (time.time() - p["created_at"] / 1000) / 3600
     vol, tvl = p["volume"]["24h"], p["tvl"]
     return {
         "address": p["address"],
         "name": p["name"],
-        "url": f"https://app.meteora.ag/dlmm/{p['address']}",
+        "meteora_url": f"https://app.meteora.ag/dlmm/{p['address']}",
         "quote_symbol": quote["symbol"],
+        "base_is_x": base_is_x,
         "base_token": {
             "symbol": base["symbol"], "mint": base["address"], "verified": base.get("is_verified"),
             "holders": base.get("holders"), "market_cap": base.get("market_cap"),
@@ -77,7 +104,9 @@ def scan(limit=8):
         "filter_by": "tvl>25000 && volume_24h>250000 && is_blacklisted=false",
     })
     pools = [summarize(p) for p in d["data"]][:limit]
+    flow = dexscreener([p["address"] for p in pools])
     for p in pools:
+        p["flow"] = flow.get(p["address"])
         p["rugcheck"] = rugcheck(p["base_token"]["mint"])
         time.sleep(0.5)
     try:
@@ -89,87 +118,249 @@ def scan(limit=8):
     (OUT / "pools.json").write_text(json.dumps(out, indent=2) + "\n")
     print(f"{len(pools)} pools -> out/pools.json")
     for p in pools:
+        ch = ((p["flow"] or {}).get("price_change_pct") or {}).get("h24")
         print(f"  {p['name']:<22} tvl ${p['tvl']:>9,}  vol24 ${p['volume_24h']:>11,}  fee/tvl {p['fee_tvl_pct_24h']:>6}%  "
-              f"bin {p['bin_step']:>3}  age {p['pool_age_hours']}h  {p['address']}")
+              f"24h {ch}%  bin {p['bin_step']:>3}  age {p['pool_age_hours']}h  {p['address']}")
 
 
-def chart(address, hours=72):
+# ---------- indicators ----------
+
+def rsi(closes, n=14):
+    if len(closes) <= n:
+        return [None] * len(closes)
+    out = [None] * n
+    gains = [max(closes[i] - closes[i - 1], 0) for i in range(1, n + 1)]
+    losses = [max(closes[i - 1] - closes[i], 0) for i in range(1, n + 1)]
+    ag, al = sum(gains) / n, sum(losses) / n
+    out.append(100 - 100 / (1 + ag / al) if al else 100)
+    for i in range(n + 1, len(closes)):
+        d = closes[i] - closes[i - 1]
+        ag = (ag * (n - 1) + max(d, 0)) / n
+        al = (al * (n - 1) + max(-d, 0)) / n
+        out.append(100 - 100 / (1 + ag / al) if al else 100)
+    return out
+
+
+def volume_profile(candles, buckets=28):
+    lo, hi = min(c["low"] for c in candles), max(c["high"] for c in candles)
+    if hi <= lo:
+        return [], []
+    step = (hi - lo) / buckets
+    vols = [0.0] * buckets
+    for c in candles:
+        a = int((c["low"] - lo) / step)
+        b = min(int((c["high"] - lo) / step), buckets - 1)
+        for k in range(a, b + 1):
+            vols[k] += c["volume"] / (b - a + 1)
+    return [lo + step * (k + 0.5) for k in range(buckets)], vols
+
+
+def strategy(p, candles):
+    """Rule-of-thumb DLMM setup from the LP Army playbook. An example for research posts, not advice."""
+    last = candles[-1]["close"]
+    day = [c for c in candles if c["timestamp"] >= candles[-1]["timestamp"] - 86400]
+    hi, lo = max(c["high"] for c in day), min(c["low"] for c in day)
+    range_pct = (hi / lo - 1) * 100
+    ch24 = ((p.get("flow") or {}).get("price_change_pct") or {}).get("h24")
+    if ch24 is None:
+        ch24 = (last / day[0]["open"] - 1) * 100
+    volatile = range_pct > 60 or p["pool_age_hours"] < 48
+
+    if ch24 <= -30:
+        shape, side = "Bid-Ask", "one-sided SOL below price"
+        low, high = -min(85, max(40, range_pct * 0.7)), 0
+        why = "downtrend: let it DCA you in on the way down and earn fees on the chop"
+    elif ch24 >= 40:
+        shape, side = "Spot", "one-sided SOL below price"
+        low, high = -min(60, max(25, range_pct * 0.5)), 0
+        why = "after a pump: catch the pullback instead of chasing the top"
+    elif volatile:
+        shape, side = "Bid-Ask", "one-sided SOL below price"
+        low, high = -min(80, max(35, range_pct * 0.6)), 0
+        why = "high volatility: wide range, weight the edges, small size"
+    else:
+        shape, side = "Spot", "two-sided around price"
+        half = max(8, range_pct / 2)
+        low, high = -half, half
+        why = "range-bound: keep liquidity where the chop is"
+
+    bins = math.ceil(math.log((1 + high / 100) / (1 + low / 100)) / math.log(1 + p["bin_step"] / 10000))
+
+    warnings = []
+    if p["pool_age_hours"] < 24:
+        warnings.append("pool under 1 day old")
+    rc = p.get("rugcheck") or {}
+    if any(r.startswith("danger") for r in rc.get("risks", [])):
+        warnings.append("rugcheck danger flags")
+    if p["base_token"].get("freeze_authority_disabled") is False:
+        warnings.append("freeze authority active")
+    t1 = (p.get("flow") or {}).get("txns_1h") or {}
+    if t1.get("sells", 0) > 1.4 * max(t1.get("buys", 0), 1):
+        warnings.append("sellers dominating the last hour")
+    if p["volume_24h"] and p["volume_1h"] < 0.25 * p["volume_24h"] / 24:
+        warnings.append("volume fading vs 24h average")
+    if p["bin_step"] < 80 and volatile:
+        warnings.append(f"bin step {p['bin_step']} is tight for this volatility")
+
+    return {
+        "shape": shape, "side": side, "range_low_pct": round(low), "range_high_pct": round(high),
+        "bins": bins, "why": why, "range_24h_pct": round(range_pct), "change_24h_pct": round(ch24, 1),
+        "warnings": warnings,
+    }
+
+
+# ---------- chart ----------
+
+def chart(address):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from matplotlib.patches import Rectangle
 
     p = summarize(get(f"{METEORA}/pools/{address}"))
-    tf = "1h" if hours > 24 else "30m"
+    p["flow"] = dexscreener([address]).get(address)
+    p["rugcheck"] = rugcheck(p["base_token"]["mint"])
+
+    tf, hours = ("30m", 48) if p["pool_age_hours"] < 72 else ("1h", 96)
+    now = int(time.time())
     candles = get(f"{METEORA}/pools/{address}/ohlcv",
-                  {"timeframe": tf, "start_time": int(time.time() - hours * 3600), "end_time": int(time.time())})["data"]
+                  {"timeframe": tf, "start_time": now - hours * 3600, "end_time": now})["data"]
     if not candles:
         sys.exit("no candles for this pool")
+    if not p["base_is_x"]:  # API prices are Y per X; flip so the chart is always base priced in quote
+        candles = [dict(c, open=1 / c["open"], close=1 / c["close"], high=1 / c["low"], low=1 / c["high"]) for c in candles]
 
-    span_h = round((candles[-1]["timestamp"] - candles[0]["timestamp"]) / 3600) + (1 if tf == "1h" else 0)
-    bg, fg, dim, up, down, accent = "#0d1117", "#e6edf3", "#7d8590", "#3fb950", "#f85149", "#f5a623"
+    s = strategy(p, candles)
+    p["strategy"] = s
+    closes = [c["close"] for c in candles]
+    last = closes[-1]
+    r = rsi(closes)
+
+    bg, panel, fg, dim, up, down, accent, band = "#0b0e14", "#11151d", "#e6edf3", "#7d8590", "#26a69a", "#ef5350", "#f5a623", "#3b82f6"
     fig = plt.figure(figsize=(12, 6.75), dpi=150, facecolor=bg)
-    ax = fig.add_axes([0.05, 0.30, 0.62, 0.58], facecolor=bg)
-    axv = fig.add_axes([0.05, 0.10, 0.62, 0.17], facecolor=bg, sharex=ax)
+    ax = fig.add_axes([0.05, 0.37, 0.53, 0.50], facecolor=bg)
+    axp = fig.add_axes([0.58, 0.37, 0.06, 0.50], facecolor=bg, sharey=ax)
+    axv = fig.add_axes([0.05, 0.235, 0.53, 0.12], facecolor=bg, sharex=ax)
+    axr = fig.add_axes([0.05, 0.085, 0.53, 0.13], facecolor=bg, sharex=ax)
 
     w = 0.7
     for i, c in enumerate(candles):
         col = up if c["close"] >= c["open"] else down
-        ax.plot([i, i], [c["low"], c["high"]], color=col, linewidth=1)
+        ax.plot([i, i], [c["low"], c["high"]], color=col, linewidth=0.9)
         lo, hi = sorted([c["open"], c["close"]])
-        ax.add_patch(Rectangle((i - w / 2, lo), w, max(hi - lo, (c["high"] - c["low"]) * 0.01 or 1e-12), color=col))
-        axv.bar(i, c["volume"], width=w, color=col, alpha=0.6)
-    ax.set_xlim(-1, len(candles))
-    ax.set_ylim(min(c["low"] for c in candles) * 0.97, max(c["high"] for c in candles) * 1.03)
+        ax.add_patch(Rectangle((i - w / 2, lo), w, max(hi - lo, last * 0.002), color=col))
+        axv.bar(i, c["volume"], width=w, color=col, alpha=0.55)
+    ax.set_xlim(-1, len(candles) + 1)
+
+    # example LP range
+    lo_p, hi_p = last * (1 + s["range_low_pct"] / 100), last * (1 + s["range_high_pct"] / 100)
+    ax.axhspan(lo_p, hi_p, color=band, alpha=0.13)
+    ax.axhline(last, color=accent, linestyle="--", linewidth=0.8)
+    ax.text(0.5, lo_p, f" example {s['shape']} range {s['range_low_pct']}% → {s['range_high_pct']:+}%",
+            color=band, fontsize=8, va="bottom", transform=ax.get_yaxis_transform())
+    ymin = min(min(c["low"] for c in candles), lo_p) * 0.95
+    ymax = max(max(c["high"] for c in candles), hi_p) * 1.04
+    ax.set_ylim(ymin, ymax)
+
+    # VPVR
+    centers, vols = volume_profile(candles)
+    if vols:
+        height = (centers[1] - centers[0]) * 0.85 if len(centers) > 1 else 1
+        poc = vols.index(max(vols))
+        axp.barh(centers, vols, height=height, color=[accent if k == poc else "#3d4451" for k in range(len(vols))])
+    axp.axis("off")
+    axp.set_title("VPVR", color=dim, fontsize=7, pad=2)
+
+    axr.plot(range(len(r)), [x if x is not None else float("nan") for x in r], color="#b388ff", linewidth=1)
+    axr.axhline(70, color=down, linewidth=0.6, linestyle=":")
+    axr.axhline(30, color=up, linewidth=0.6, linestyle=":")
+    axr.set_ylim(0, 100)
+    axr.set_yticks([30, 70])
 
     step = max(1, len(candles) // 6)
     ticks = list(range(0, len(candles), step))
-    axv.set_xticks(ticks)
-    axv.set_xticklabels([datetime.fromtimestamp(candles[i]["timestamp"], timezone.utc).strftime("%d %b %H:%M") for i in ticks])
-    for a in (ax, axv):
-        a.tick_params(colors=dim, labelsize=8)
-        for s in a.spines.values():
-            s.set_color("#30363d")
-        a.grid(color="#21262d", linewidth=0.6)
+    axr.set_xticks(ticks)
+    axr.set_xticklabels([datetime.fromtimestamp(candles[i]["timestamp"], timezone.utc).strftime("%d %b %H:%M") for i in ticks])
+    for a in (ax, axv, axr):
+        a.tick_params(colors=dim, labelsize=7)
+        for sp in a.spines.values():
+            sp.set_color("#262c36")
+        a.grid(color="#1b2029", linewidth=0.6)
     plt.setp(ax.get_xticklabels(), visible=False)
-    axv.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: usd(v)))
+    plt.setp(axv.get_xticklabels(), visible=False)
     ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:.3g}"))
-    ax.set_ylabel(f"price ({p['quote_symbol']})", color=dim, fontsize=8)
-    axv.set_ylabel("volume", color=dim, fontsize=8)
+    axv.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: usd(v)))
+    axv.locator_params(axis="y", nbins=3)
+    axv.set_ylabel("volume", color=dim, fontsize=7)
+    axr.set_ylabel(f"RSI {round(r[-1]) if r[-1] is not None else ''}", color=dim, fontsize=7)
 
-    fig.text(0.05, 0.93, f"{p['name']}  ·  Meteora DLMM", color=fg, fontsize=17, weight="bold")
-    fig.text(0.05, 0.895, f"{tf} candles · last {span_h}h · {address[:6]}…{address[-4:]}", color=dim, fontsize=9)
+    fl = p["flow"] or {}
+    pc = fl.get("price_change_pct") or {}
+    fig.text(0.05, 0.935, f"{p['name']}", color=fg, fontsize=18, weight="bold")
+    fig.text(0.05, 0.895, f"Meteora DLMM · price in {p['quote_symbol']} · {tf} candles · bin step {p['bin_step']} · base fee {p['base_fee_pct']}% · "
+             f"{address[:6]}…{address[-4:]}", color=dim, fontsize=8.5)
+    x = 0.33
+    for label in ("h1", "h6", "h24"):
+        v = pc.get(label)
+        if v is None:
+            continue
+        fig.text(x, 0.935, f"{label[1:]}{'h'} {v:+.1f}%", color=up if v >= 0 else down, fontsize=11, weight="bold")
+        x += 0.085
 
-    rc = rugcheck(p["base_token"]["mint"])
-    bt = p["base_token"]
-    rows = [
-        ("TVL", usd(p["tvl"])),
-        ("24h volume", usd(p["volume_24h"])),
-        ("24h fees", usd(p["fees_24h"])),
-        ("fee / TVL 24h", f"{p['fee_tvl_pct_24h']}%"),
-        ("volume / TVL", f"{p['volume_to_tvl']}x"),
-        ("bin step", f"{p['bin_step']} bps"),
-        ("base fee", f"{p['base_fee_pct']}%"),
-        ("pool age", f"{p['pool_age_hours'] / 24:.1f}d" if p["pool_age_hours"] >= 48 else f"{p['pool_age_hours']:.0f}h"),
-        ("holders", f"{bt['holders']:,}" if bt.get("holders") else "n/a"),
-        ("market cap", usd(bt["market_cap"]) if bt.get("market_cap") else "n/a"),
-        ("freeze auth", "revoked" if bt.get("freeze_authority_disabled") else "ACTIVE"),
-        ("rugcheck risks", str(len(rc.get("risks", []))) if "error" not in rc else "n/a"),
+    bt, rc = p["base_token"], p["rugcheck"]
+    t24, t1 = fl.get("txns_24h") or {}, fl.get("txns_1h") or {}
+    age = f"{p['pool_age_hours'] / 24:.1f}d" if p["pool_age_hours"] >= 48 else f"{p['pool_age_hours']:.0f}h"
+    sections = [
+        ("POOL", [
+            ("TVL", usd(p["tvl"]), None), ("24h volume", usd(p["volume_24h"]), None),
+            ("24h fees", usd(p["fees_24h"]), None), ("fee / TVL 24h", f"{p['fee_tvl_pct_24h']}%", None),
+            ("volume / TVL", f"{p['volume_to_tvl']}x", None), ("pool age", age, down if p["pool_age_hours"] < 24 else None),
+        ]),
+        ("FLOW", [
+            ("24h buys / sells", f"{t24.get('buys', '–')} / {t24.get('sells', '–')}", None),
+            ("1h buys / sells", f"{t1.get('buys', '–')} / {t1.get('sells', '–')}",
+             down if t1.get("sells", 0) > 1.4 * max(t1.get("buys", 0), 1) else None),
+            ("24h range", f"{s['range_24h_pct']}%", None),
+        ]),
+        ("TOKEN", [
+            ("market cap", usd(bt["market_cap"]) if bt.get("market_cap") else "n/a", None),
+            ("holders", f"{bt['holders']:,}" if bt.get("holders") else "n/a", None),
+            ("freeze auth", "revoked" if bt.get("freeze_authority_disabled") else "ACTIVE",
+             None if bt.get("freeze_authority_disabled") else down),
+            ("rugcheck risks", "n/a" if "error" in rc else str(len(rc.get("risks", []))),
+             down if rc.get("risks") else None),
+            ("socials", " + ".join(k for k, v in (("site", fl.get("has_website")), ("X", fl.get("has_twitter"))) if v) or "none",
+             None if fl.get("has_twitter") else down),
+        ]),
+        ("EXAMPLE SETUP", [
+            ("shape", s["shape"], band), ("side", s["side"].replace(" price", ""), band),
+            ("range", f"{s['range_low_pct']}% → {s['range_high_pct']:+}%", band),
+            ("bins", f"~{s['bins']}", band),
+        ]),
     ]
-    y = 0.86
-    fig.text(0.72, y, "POOL CHECK", color=accent, fontsize=11, weight="bold")
-    for k, v in rows:
-        y -= 0.058
-        fig.text(0.72, y, k, color=dim, fontsize=10)
-        warn = v == "ACTIVE" or (k == "rugcheck risks" and v not in ("0", "n/a"))
-        fig.text(0.97, y, v, color=down if warn else fg, fontsize=10, ha="right", weight="bold")
-    fig.text(0.97, 0.03, "@SinClair_0000 · not financial advice", color=dim, fontsize=8, ha="right")
+    fig.add_artist(Rectangle((0.665, 0.06), 0.315, 0.86, transform=fig.transFigure, color=panel, zorder=-1))
+    y = 0.89
+    for title, rows in sections:
+        fig.text(0.68, y, title, color=accent, fontsize=8.5, weight="bold")
+        y -= 0.034
+        for k, v, col in rows:
+            fig.text(0.68, y, k, color=dim, fontsize=8.5)
+            fig.text(0.965, y, v, color=col or fg, fontsize=8.5, ha="right", weight="bold")
+            y -= 0.031
+        y -= 0.012
+    if s["warnings"]:
+        fig.text(0.68, y, "⚠ " + " · ".join(s["warnings"][:3]), color=down, fontsize=7, wrap=True)
+
+    fig.text(0.05, 0.025, "example setup for research, not financial advice · data: Meteora, DexScreener, RugCheck",
+             color=dim, fontsize=7)
+    fig.text(0.98, 0.025, "@SinClair_0000", color=fg, fontsize=8, ha="right", weight="bold")
 
     OUT.mkdir(exist_ok=True)
     fig.savefig(OUT / "chart.png", facecolor=bg)
-    p["rugcheck"] = rc
     (OUT / "chart_pool.json").write_text(json.dumps(p, indent=2) + "\n")
-    print(f"chart -> out/chart.png ({p['name']}, {len(candles)} candles); stats -> out/chart_pool.json")
+    print(f"chart -> out/chart.png ({p['name']}, {len(candles)} {tf} candles)")
+    print(f"strategy: {s['shape']}, {s['side']}, {s['range_low_pct']}%..{s['range_high_pct']:+}%, ~{s['bins']} bins; "
+          f"warnings: {s['warnings']}")
 
 
 def usd(v):
