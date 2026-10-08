@@ -25,6 +25,8 @@ and don't repeat a topic or pool covered in the last ~2 weeks.
 - Pool posts are research, not calls: "on my radar", "what I'm checking", "what makes me pass".
   Never "buy", "apeing", "this will run", price targets. Name the pair (e.g. AUTON-SOL), not the CA.
 - A high fee/TVL on a <2 day old pool is a risk signal as much as an opportunity. Say both.
+- Pool posts can mention the example setup from `chart_pool.json` → `strategy` (shape, side, range)
+  framed as "if I touched it" / "how I'd approach it", plus its `warnings`. Never as a recommendation.
 - No links, no hashtags (X shows those posts to fewer people). Max 1 emoji.
 - Tag @MeteoraAG or @met_lparmy only when it's genuinely about them (≤ 1 in 4 posts).
 
