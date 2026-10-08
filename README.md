@@ -27,7 +27,9 @@ Cost: twitterapi.io reads ~$1.50/month. Meteora + RugCheck data are free. Claude
 
 ## Cloud environment (claude.ai/code → Default environment)
 
-- Env vars: `TWITTERAPI_KEY`, `DISCORD_WEBHOOK_URL`
+- Network secret: twitterapi.io key, host `api.twitterapi.io`, header `X-API-Key`, no prefix
+  (the proxy adds it; sessions never see it)
+- Env var: `DISCORD_WEBHOOK_URL`
 - Network access: `api.twitterapi.io`, `discord.com`, `dlmm.datapi.meteora.ag`, `api.dexscreener.com`,
   `api.rugcheck.xyz`,
   plus PyPI (for `pip install matplotlib`)

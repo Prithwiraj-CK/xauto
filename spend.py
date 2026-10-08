@@ -4,7 +4,7 @@
   python3 spend.py start                   -> remember balance before a run (out/spend_start.json)
   python3 spend.py end <label> <runs/day>  -> cost of this run, balance, monthly estimate -> Discord
 
-Env: TWITTERAPI_KEY, DISCORD_WEBHOOK_URL (for `end`)
+Env: TWITTERAPI_KEY (optional: in the cloud the network proxy injects it), DISCORD_WEBHOOK_URL (for `end`)
 """
 import json
 import os
@@ -13,6 +13,14 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).parent
+
+
+def twitterapi_headers():
+    """Locally the key comes from .env; in the cloud a network secret adds X-API-Key on the way out."""
+    key = os.getenv("TWITTERAPI_KEY")
+    return {"X-API-Key": key} if key else {}
+
+
 START = ROOT / "out" / "spend_start.json"
 CREDITS_PER_USD = 100_000
 LOW_BALANCE_USD = 1.0
@@ -20,7 +28,7 @@ LOW_BALANCE_USD = 1.0
 
 def balance_usd():
     req = urllib.request.Request("https://api.twitterapi.io/oapi/my/info",
-                                 headers={"X-API-Key": os.environ["TWITTERAPI_KEY"]})
+                                 headers=twitterapi_headers())
     with urllib.request.urlopen(req, timeout=30) as r:
         d = json.load(r)
     # bonus credits are spent first, so count both or early runs look free

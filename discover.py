@@ -3,7 +3,7 @@
   python3 discover.py          -> out/creators_ranked.json + top 25 printed
   python3 discover.py --apply  -> also writes the top 15 into config/creators.txt (keeps manual entries)
 
-Env: TWITTERAPI_KEY, MY_HANDLE (default SinClair_0000)
+Env: TWITTERAPI_KEY (optional: in the cloud the network proxy injects it), MY_HANDLE (default SinClair_0000)
 Cost: ~10 search pages (~200 tweets) ≈ $0.03 per run.
 """
 import json
@@ -16,6 +16,14 @@ from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).parent
+
+
+def twitterapi_headers():
+    """Locally the key comes from .env; in the cloud a network secret adds X-API-Key on the way out."""
+    key = os.getenv("TWITTERAPI_KEY")
+    return {"X-API-Key": key} if key else {}
+
+
 API = "https://api.twitterapi.io/twitter/tweet/advanced_search"
 ME = os.getenv("MY_HANDLE", "SinClair_0000").lower()
 QUERY = '(meteora OR dlmm OR "lp army" OR #LPArmy OR "damm v2" OR "meteora pool") -filter:retweets lang:en'
@@ -26,7 +34,7 @@ def search(query, query_type, pages):
     tweets, cursor = [], ""
     for _ in range(pages):
         url = API + "?" + urllib.parse.urlencode({"query": query, "queryType": query_type, "cursor": cursor})
-        req = urllib.request.Request(url, headers={"X-API-Key": os.environ["TWITTERAPI_KEY"]})
+        req = urllib.request.Request(url, headers=twitterapi_headers())
         with urllib.request.urlopen(req, timeout=30) as r:
             data = json.load(r)
         data = data.get("data", data)

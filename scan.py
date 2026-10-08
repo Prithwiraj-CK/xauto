@@ -1,6 +1,6 @@
 """Find fresh Meteora/LP tweets worth replying to. Writes out/candidates.json.
 
-Env: TWITTERAPI_KEY   (twitterapi.io)
+Env: TWITTERAPI_KEY (optional: in the cloud the network proxy injects it)   (twitterapi.io)
      MY_HANDLE        default SinClair_0000 (excluded from results)
      RUN_SLOTS_UTC    run times as decimal UTC hours, default "7.5,9.5,14.5,17.5" (1, 3, 8, 11 PM IST).
                       Each run looks back to the previous slot, so no tweet is seen twice.
@@ -16,6 +16,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).parent
+
+
+def twitterapi_headers():
+    """Locally the key comes from .env; in the cloud a network secret adds X-API-Key on the way out."""
+    key = os.getenv("TWITTERAPI_KEY")
+    return {"X-API-Key": key} if key else {}
+
+
 OUT = ROOT / "out" / "candidates.json"
 CREATORS = ROOT / "config" / "creators.txt"
 API = "https://api.twitterapi.io/twitter/tweet/advanced_search"
@@ -44,7 +52,7 @@ def search(query):
         url = API + "?" + urllib.parse.urlencode(
             {"query": query, "queryType": "Latest", "cursor": cursor}
         )
-        req = urllib.request.Request(url, headers={"X-API-Key": os.environ["TWITTERAPI_KEY"]})
+        req = urllib.request.Request(url, headers=twitterapi_headers())
         with urllib.request.urlopen(req, timeout=30) as r:
             data = json.load(r)
         data = data.get("data", data)
