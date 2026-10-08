@@ -2,7 +2,7 @@
 
 Run these steps in the repo root. Do not commit or push anything.
 
-1. `pip install -q matplotlib`
+1. `pip install -q matplotlib` and `python3 spend.py start`
 2. `python3 history.py` (if it fails, continue without it)
 3. `python3 research.py scan`
 4. Read `content/PLAN.md`, `knowledge/lp-notes.md`, `content/teaching_bank.json`,
@@ -15,4 +15,5 @@ Run these steps in the repo root. Do not commit or push anything.
 6. Write `out/post.json`:
    `{"type": "<type>", "text": "<the post, max 280 chars>", "image": "out/chart.png" or null, "note": "<one line for the human: why this post / what to double-check>"}`
 7. `python3 send_post.py` (it rejects posts over 280 chars; shorten and rerun if so)
-8. Report the type, the pool (if any), and the post text.
+8. `python3 spend.py end daily-post 1`
+9. Report the type, the pool (if any), and the post text.
