@@ -9,7 +9,7 @@ No X API, no X developer account. You press Post yourself.
 - **Reply drafts** (Claude cloud routine, 4x/day, steps in `ROUTINE.md`): fresh Meteora/LP tweets →
   drafted replies → Discord "✍️ Reply on X".
 
-Cost: twitterapi.io reads ~$1.50/month. Meteora + RugCheck data are free. Claude runs on your plan.
+Cost: twitterapi.io reads ~$2–3/month. Meteora + RugCheck data are free. Claude runs on your plan.
 
 ## Files
 

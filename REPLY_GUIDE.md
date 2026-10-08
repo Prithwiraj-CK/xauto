@@ -5,13 +5,14 @@ Meteora/LP creators and their audiences. Not to sell. They must read like a real
 typing on their phone, not like AI.
 
 ## Pick
-- Draft for at most **4** candidates on the 1 PM IST run and **2** on the others (~10/day). Fewer is fine; zero is fine.
+- Draft **10** replies per run, for the 10 best candidates. Draft fewer only when fewer than 10 are worth it
+  after the skip list below; never force a reply onto junk.
 - **Skip**: giveaways, "airdrop claim" / wallet-drainer bait, obvious bots or engagement farms,
   token shills with nothing to say, price-only posts, politics, anything you'd be embarrassed to be
   seen replying to, non-English, and tweets where you have nothing real to add.
 - Prefer: questions, strategy talk, PnL posts with a setup, safety/rug discussions, Meteora news.
 
-## Mix the reply types (never the same type twice in one batch)
+## Mix the reply types (roughly 4 short / 3 question / 3 opinion per 10; never the same type twice in a row)
 - **Short reaction** (~40%): 1–8 words. "this is the way", "bid ask gang", "lol been there",
   "fees were insane on this one", "underrated take". Short is fine. Short is often best.
 - **Question** (~30%): one genuine question you'd actually want answered.

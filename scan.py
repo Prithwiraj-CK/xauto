@@ -30,8 +30,8 @@ API = "https://api.twitterapi.io/twitter/tweet/advanced_search"
 
 ME = os.getenv("MY_HANDLE", "SinClair_0000")
 SLOTS = sorted(float(x) for x in os.getenv("RUN_SLOTS_UTC", "7.5,9.5,14.5,17.5").split(","))
-MAX_PAGES = 2  # ~20 tweets/page, ~$0.003/page
-MAX_CANDIDATES = 10
+MAX_PAGES = 3  # ~20 tweets/page, ~$0.003/page
+MAX_CANDIDATES = 20  # enough to draft 10 after skipping junk
 CREATORS_PER_QUERY = 11
 
 KEYWORDS = '(meteora OR dlmm OR "lp army" OR #LPArmy OR "damm v2" OR "meteora pool")'

@@ -73,11 +73,18 @@ def main():
     if not drafts:
         print("No drafts to send")
         return
-    # Discord allows 10 embeds per message
-    for i in range(0, len(drafts), 10):
-        batch = drafts[i : i + 10]
+    # Discord allows 10 embeds and 6000 embed characters per message
+    batches, size = [[]], 0
+    for e in map(embed, drafts):
+        n = len(e["title"]) + len(e["description"])
+        if batches[-1] and (len(batches[-1]) == 10 or size + n > 5800):
+            batches.append([])
+            size = 0
+        batches[-1].append(e)
+        size += n
+    for i, batch in enumerate(batches):
         content = f"**{len(drafts)} new reply draft{'s' if len(drafts) != 1 else ''}**" if i == 0 else None
-        send({"content": content, "embeds": [embed(d) for d in batch]})
+        send({"content": content, "embeds": batch})
     print(f"Sent {len(drafts)} drafts to Discord")
 
 
