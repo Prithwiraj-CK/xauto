@@ -24,3 +24,6 @@ drbluechip
 blitoxbt
 tro7aocripto
 ArtueroY
+# added by hand
+0xVanChu
+PMetaTrader
