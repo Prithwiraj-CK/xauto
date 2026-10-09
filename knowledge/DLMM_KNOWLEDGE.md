@@ -252,7 +252,140 @@ when real flow exists, and exiting when the thesis breaks.
 
 ---
 
-## 15. Data sources & APIs (all free unless noted)
+## 15. Community playbook from X (harvested Oct 2026)
+
+Distilled from ~2,200 tweets on DLMM teaching/strategy (28 searches, Top-ranked) plus ~340 posts by
+**@EvilPanda**, one of the most-followed LP Army teachers (posts consistent +100–250 SOL months).
+Paraphrased, credited by handle. These are what experienced LPs say they do, not advice.
+
+### 15.1 The four parts every strategy needs (EvilPanda)
+**Coin selection → pool selection → entry criteria → exit criteria.** Get those four down and you can
+LP from a phone without stress. **Coin selection is ~80% of the result**; a "90% token selection,
+5% discipline, 5% luck" split is echoed by others (@findocere). No shape or range saves a scam coin.
+
+### 15.2 Evil Panda Strat: SOL-sided, wide, from near the top
+The idea: be the **last, widest pool** so every panic seller, bundler and stop-loss pays you fees on
+the way down, then exit on the first bounce.
+- **Screen**: DexScreener filter MC ≥ $250K and 24h vol ≥ $1M, sort by age, skip tokens with no
+  image/profile. GMGN: total fees > 30 SOL, phishing < 30%, bundling < 60%, insiders < 10%, top-10 < 30%.
+  Avoid very new tokens: after a run of rugs he added **"only coins ≥ 12h old"** (elsewhere: skipping
+  < 4h old removes most rugs; if you go that early, use −99%).
+- **Pool**: **high base fee (5% or 10%)** with bin step 80/100/125 (also 200/10%). Range **−86% to
+  −95%** (one example: −90% on 80/0.8% ≈ 290 bins; −95% on 125/10%).
+- **Entry**: 15-min chart, wait for price to **break above SuperTrend**, then open one-sided SOL
+  (Spot preferred, Bid-Ask OK). Don't chase pumps; it's fine to open below ATH when a dump is expected.
+- **Exit = confluence of 2 signals** (15m, or 5m when busy): **RSI(2) closes > 90** AND either
+  **price closes above the upper Bollinger Band** or **MACD prints its first green histogram bar**.
+  A SuperTrend support break is the cue to start watching for the exit. When profit is unusually big,
+  take it and move on; don't milk it.
+- **Why Spot over Bid-Ask here**: coins often dump only ~50% before bouncing; Spot earns far more fees
+  in the upper part of the range. The −95% width is **rug insurance**, not where the fees come from.
+- **Why wide**: capital-inefficient, yes, but price stays in range through a −80/−90% dump, fees keep
+  printing, and a small bounce can turn it green. Wider range = lower breakeven. He calls it peace of
+  mind and better sleep.
+- If the exit signal fires and you're red: wrong coin, or opened too high in a crowded pool.
+
+### 15.3 Fee tier & pool choice
+- **New/volatile coins (< ~12h): use 5–10% pools.** More fees per crossing, and in a rug the fees
+  offset more IL. One rug in a crowded 2% pool convinced him to never go under 5% in volatile periods.
+- A **100/2% pool on a brand-new coin** can be someone offloading DAMM bags, or the dev wanting to pay
+  less when they rug.
+- After a rug, when the token **consolidates**, a 100/1% pool can farm the sideways chop well.
+- Same token has several pools: compare bin step/fee/TVL and pick by the **correction size you
+  expect**, not the highest TVL.
+- Test fee tiers safely in the **LP Army Playground** (simulated money), e.g. 1% vs 5% on the same coin.
+- **Pool structure risk** (EvilPanda): if ~25% of a pool's TVL is copy-traders of one wallet, when
+  that wallet closes they all dump together, a big inorganic red candle. Check who is in the pool
+  ("pool originality"); LP Agent shows top LP wallets per pool.
+
+### 15.4 Bonus Stage / multi-day two-sided Bid-Ask (EvilPanda's 2026 main strat)
+Originally from @bengsharksol; ~10 iterations later it's a multi-day chop farm:
+1. Find a coin that **dumped hard and is now chopping sideways** but isn't dead (volume, narrative,
+   real buyers and sellers).
+2. Open a **two-sided Bid-Ask** with **Ape In** (default range, 69 bins ≈ 34 below / 34 above).
+3. If price bleeds out of range, **layer another two-sided BA near the new low** (multi-layered).
+4. **Take profit on the pump**, wait for the next dump, repeat until the trend looks finished.
+- **Never "top-blast"**: don't open two-sided BA near highs; wait for the dump.
+- Choppy coins are the dream; even "dead"-looking coins that chop sideways keep paying.
+- Needs a hard rule that says **"this coin is done, move on"**; that took him months and losses.
+
+### 15.5 Token-sided Bid-Ask: DCA out with fees
+- Buy a token low, put it in a **one-sided token Bid-Ask above price**: it sells progressively into
+  strength (more as price rises) and earns fees in the chop. Several examples beat plain holding
+  (e.g. +117% vs ~+46% hold; profitable exit 54% below entry thanks to fees).
+- **Flip pattern**: SOL Bid-Ask below → price dumps through it (now holding token) → close and reopen as
+  **token Bid-Ask above** to sell the bounce (EvilPanda, @0xyunss). 0xyunss variant: after a 70–80% dump
+  and slight retrace, tight 15–30% SOL BA; exit/flip on a **5m SuperTrend break** into a token BA with a
+  wide (≈200%) upside range.
+- Using a fixed ~100-bin token range forces you to take profit when it goes out of range above.
+- **Big holders exiting**: a narrow token-side Bid-Ask sells a large bag without the price impact of a
+  market sell, and earns fees doing it (@0xIcedMilo, Meteora's single-sided take-profit guide).
+
+### 15.6 Spot vs Bid-Ask vs Curve (evidence)
+- @ConstantineDeFi ran Spot (5 SOL) vs Bid-Ask (20 SOL), both SOL-sided −90%, same time: **Spot earned
+  about as much in fees at ¼ the size** while price stayed in the upper third. After a > −30% dump BA
+  caught up, and BA's **lower average entry** put it in profit after only a +15% bounce (Spot needed ~+36%).
+  Rule of thumb: Spot if it chops near the top, BA if it dumps deep before bouncing.
+- @findocere: **Spot** when volume is spread across all prices; **Bid-Ask** when you expect a flash dump
+  before volume arrives; **Curve** when you expect the volume concentrated around one level.
+- Mixes are common: 50/50 BA+Spot, 70:30 BA:Spot for more fees (@0xyunss).
+
+### 15.7 Risk, sizing & discipline
+- **Cut at the bottom of the range** (@ChivesWork): below −50% is "hell mode", where a $500 position at the
+  range floor can halve again in seconds. Plot the range bottom on the chart and be ready to eject.
+  (EvilPanda's wide strat instead holds through, by design: different strategies, different rules.)
+- **Diversify**: at least 6 positions (EvilPanda), 8–10 in volatile times; small wallets ≤ ~70% in one
+  pool unless A+.
+- **Size by risk**: bigger only in wider/safer setups; increase size only as a reward for a clean day;
+  start with 0.5–1 SOL positions until the strategy is yours.
+- **No revenge LP**; after a loss take a break. After a big loss: calculate it honestly, **don't bet
+  bigger**, rebuild confidence with small positions (ChivesWork).
+- **Don't babysit overnight**: EvilPanda doesn't open after ~6pm unless the setup is wide; several LPs
+  vibe-coded bots that **only close** positions on their rules (entries stay manual).
+- **Know your temperament**: tight "Heart Attack" ranges suit screen-watchers; wide ranges suit people
+  who can't watch all day. Copying someone else's strategy fails under pressure.
+- The beginner cycle everyone reports: easy wins → first rekt → recover → over-confidence → bigger rekt →
+  quit or rebuild. Track every trade's data and review it (even with AI) to find your edge.
+
+### 15.8 Market regime: the weekly DLMM cycle (EvilPanda)
+**Normal** (≈1 good coin/day) → **hot** (many runners, everything prints) → **crime season** (good-looking
+coins rug early, 1–2 days) → **dry** (volume gone, few or no setups) → repeat. Get **less aggressive
+when it's hot** (crime season is next), more aggressive once the dry season ends. In dry markets doing
+nothing is a valid position. In a "high print" regime (many tokens > 10% 24h fee/TVL) one LP ran an
+**equal-size basket of 15+ tokens** (≥ 24h old, MC ≥ $300K, −50% to −95%, Spot or 50/50 BA+Spot) and
+closed everything after 15–24h on total PnL (@0xMrBeefman). Only works in that regime.
+
+### 15.9 Blue-chip & DCA uses
+- **DCA into SOL with USDC**: one-sided USDC Spot in SOL-USDC 10/0.1% (70 bins). After 2 days, converting
+  everything to SOL gave ~7% more SOL than a straight market buy (EvilPanda).
+- **Accumulate BTC**: single-sided USDC Bid-Ask ~40% below price in cbBTC/USDC (348 bins), collecting
+  fees while it waits (@satsmonkes).
+- Tight SOL-USDC (bin step 4, 0.04%) can show ~1%+ daily while in range; compounding helps, but it's
+  out of range fast (@molusol).
+
+### 15.10 Product changes worth knowing (2025–2026)
+- **Dynamic positions**: up to **1,400 bins** per position (was 69), so no more stitching 10 positions;
+  low bin steps (20) work with wide ranges; Bid-Ask/Curve shapes no longer "sawtooth". Old 69-bin range
+  tables (80 bs ≈ −40%, 100 ≈ −50%, 125 ≈ −57%, 200 ≈ −74%, 250 ≈ −81%, 400 ≈ −93%) only apply to a
+  69-bin position such as Ape In's default.
+- New combos like **20/2%**; dynamic fee rides on top of the base fee.
+- **Ape In** (one-click entry), **Auto-Fill + Zap** for two-sided positions straight from SOL.
+- **Dynamic Terminal** (Mar 2026): trading-terminal layout, bin lines on the chart, precise min/max.
+- **Quote Token Fees** (May 2026): earn DLMM fees fully in SOL, USDC or a chosen token.
+- **Referral Staking** (Jul 2026): stake MET, share DLMM protocol fees, refer LPs.
+- **DLMM Pro** (announced Oct 2026): launch → open liquidity without migrating, configurable dynamic fees,
+  choose fee token, LP + on-chain limit orders in the same pool.
+- Double-sided LP swaps routed through pumpswap can earn pump.fun **cashback** (check the app).
+
+### 15.11 Content angles this gives @SinClair_0000
+Explain *why* wide-range SOL-sided works (fees from panic sellers); Spot vs Bid-Ask in one picture;
+the 2-indicator exit; why 5–10% pools on new coins; the weekly crime/dry cycle; copy-trader pool risk;
+"green fees ≠ green position" with a token-sided example; the DCA-into-SOL math. Credit teachers by
+handle when using their frameworks; never present their PnL as yours.
+
+---
+
+## 16. Data sources & APIs (all free unless noted)
 
 | Source | Endpoint | Gives |
 |---|---|---|
