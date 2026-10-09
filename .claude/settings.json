@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 spend.py:*)",
+      "Bash(python3 scan.py:*)",
+      "Bash(python3 send_discord.py:*)",
+      "Bash(python3 history.py:*)",
+      "Bash(python3 research.py:*)",
+      "Bash(python3 send_post.py:*)",
+      "Bash(pip install -q matplotlib)"
+    ]
+  }
+}
