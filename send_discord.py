@@ -16,7 +16,7 @@ DRAFTS = ROOT / "out" / "drafts.json"
 
 
 def intent_url(tweet_id, reply):
-    return "https://x.com/intent/tweet?" + urllib.parse.urlencode(
+    return "https://x.com/intent/post?" + urllib.parse.urlencode(
         {"in_reply_to": tweet_id, "text": reply}, quote_via=urllib.parse.quote
     )
 

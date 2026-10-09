@@ -26,7 +26,7 @@ def main():
     if n > MAX_LEN:
         raise SystemExit(f"post is {n} chars, over {MAX_LEN}: shorten it")
 
-    link = "https://x.com/intent/tweet?" + urllib.parse.urlencode({"text": text}, quote_via=urllib.parse.quote)
+    link = "https://x.com/intent/post?" + urllib.parse.urlencode({"text": text}, quote_via=urllib.parse.quote)
     lines = [text, ""]
     image = post.get("image")
     if image:
