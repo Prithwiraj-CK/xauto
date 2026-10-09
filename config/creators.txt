@@ -1,6 +1,6 @@
 # Meteora / LP creators to watch (one handle per line, no @ needed).
 # Their new posts are always considered, even if they don't say "meteora".
-# Searched in groups of 11 handles: each extra group adds one search (~$0.003-0.006 per run).
+# Searched in groups of 12 handles: each extra group adds one search (~$0.003-0.006 per run).
 MeteoraAG
 MCGlive
 met_lparmy
