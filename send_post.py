@@ -7,7 +7,7 @@ import json
 import urllib.parse
 from pathlib import Path
 
-from send_discord import send
+from send_discord import buttons, send
 
 ROOT = Path(__file__).parent
 MAX_LEN = 280
@@ -33,13 +33,13 @@ def main():
         lines.append("🖼️ *save the image below, then attach it in X before posting*")
     if post.get("note"):
         lines.append(f"📝 *{post['note']}*")
-    lines.append(f"**[🚀 Post on X]({link})**")
     embed = {"description": "\n".join(lines), "color": 0x1D9BF0}
     files = []
     if image:
         files = [ROOT / image]
         embed["image"] = {"url": f"attachment://{Path(image).name}"}
-    send({"content": f"**📅 Today's post · {post.get('type', 'post')}** ({n}/280)", "embeds": [embed]}, files)
+    send({"content": f"**📅 Today's post · {post.get('type', 'post')}** ({n}/280)", "embeds": [embed],
+          "components": buttons([("🚀 Post on X", link)])}, files)
     print(f"Sent {post.get('type')} post to Discord")
 
 

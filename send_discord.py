@@ -29,15 +29,19 @@ def embed(d):
     ]
     if d.get("why"):
         parts.append(f"*{d['why']}*")
-    parts.append(
-        f"**[✍️ Reply]({intent_url(d['id'], d['reply'])})** · [open tweet]({d['url']})"
-    )
+    parts.append(f"[open tweet]({d['url']}) · tap **✍️ Reply @{d['author']}** below")
     return {
         "title": f"@{d['author']}",
         "url": d["url"],
         "description": "\n\n".join(parts)[:4000],
         "color": 0xF5A623,
     }
+
+
+def buttons(links):
+    """Link buttons, 5 per row. Discord mangles percent-encoded links inside embeds, but not in buttons."""
+    btns = [{"type": 2, "style": 5, "label": label[:80], "url": url} for label, url in links]
+    return [{"type": 1, "components": btns[i : i + 5]} for i in range(0, len(btns), 5)]
 
 
 def send(payload, files=()):
@@ -58,7 +62,7 @@ def send(payload, files=()):
     else:
         data, ctype = json.dumps(payload).encode(), "application/json"
     req = urllib.request.Request(
-        os.environ["DISCORD_WEBHOOK_URL"],
+        os.environ["DISCORD_WEBHOOK_URL"] + ("?with_components=true" if payload.get("components") else ""),
         data=data,
         headers={"Content-Type": ctype, "User-Agent": "sinclair-x-bot"},
         method="POST",
@@ -73,16 +77,17 @@ def main():
         return
     # Discord allows 10 embeds and 6000 embed characters per message
     batches, size = [[]], 0
-    for e in map(embed, drafts):
-        n = len(e["title"]) + len(e["description"])
+    for d in drafts:
+        n = len(f"@{d['author']}") + len(embed(d)["description"])
         if batches[-1] and (len(batches[-1]) == 10 or size + n > 5800):
             batches.append([])
             size = 0
-        batches[-1].append(e)
+        batches[-1].append(d)
         size += n
     for i, batch in enumerate(batches):
         content = f"**{len(drafts)} new reply draft{'s' if len(drafts) != 1 else ''}**" if i == 0 else None
-        send({"content": content, "embeds": batch})
+        send({"content": content, "embeds": [embed(d) for d in batch],
+              "components": buttons((f"✍️ Reply @{d['author']}", intent_url(d["id"], d["reply"])) for d in batch)})
     print(f"Sent {len(drafts)} drafts to Discord")
 
 
