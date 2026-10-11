@@ -7,7 +7,9 @@
       "Bash(python3 history.py:*)",
       "Bash(python3 research.py:*)",
       "Bash(python3 send_post.py:*)",
-      "Bash(pip install -q matplotlib)"
+      "Bash(pip install -q matplotlib)",
+      "Bash(python3 trends.py:*)",
+      "Bash(TZ=Asia/Kolkata date:*)"
     ]
   }
 }

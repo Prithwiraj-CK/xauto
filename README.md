@@ -22,6 +22,7 @@ Cost: twitterapi.io reads ~$2–3/month. Meteora + RugCheck data are free. Claud
 | `history.py` | your recent tweets, so posts don't repeat |
 | `send_post.py` / `send_discord.py` | send the daily post / reply drafts to Discord |
 | `scan.py`, `REPLY_GUIDE.md`, `config/creators.txt` | reply helper |
+| `trends.py` | last 48h of Meteora / DLMM / LP Army talk for trend posts (budget-capped, max $0.10) |
 | `spend.py` | twitterapi.io balance; each routine run posts its cost + balance to Discord, warns under $1 |
 | `discover.py` | find & rank accounts posting about Meteora → `--apply` adds top 15 to `creators.txt` |
 | `discord_reader.py` / `discord_user_reader.py` | allowlisted channel reader with bot Gateway and user REST modes |

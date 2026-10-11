@@ -10,7 +10,7 @@ from pathlib import Path
 from send_discord import buttons, send
 
 ROOT = Path(__file__).parent
-MAX_LEN = 280
+MAX_LEN = 1000  # the account has Premium; X allows long posts, but keep most short
 
 
 def x_length(text):
@@ -38,7 +38,7 @@ def main():
     if image:
         files = [ROOT / image]
         embed["image"] = {"url": f"attachment://{Path(image).name}"}
-    send({"content": f"**📅 Today's post · {post.get('type', 'post')}** ({n}/280)", "embeds": [embed],
+    send({"content": f"**📅 Today's post · {post.get('type', 'post')}** ({n} chars{', long post' if n > 280 else ''})", "embeds": [embed],
           "components": buttons([("🚀 Post on X", link)])}, files)
     print(f"Sent {post.get('type')} post to Discord")
 
