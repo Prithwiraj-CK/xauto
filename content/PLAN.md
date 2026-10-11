@@ -41,6 +41,21 @@ except on research days. Never more than 2 pool posts a week. Never the same typ
 - **Avoid**: giveaway / "drop your wallet" / engagement-farm styles, shilling tokens, price predictions,
   hashtags, links in the post (put a link in a reply instead; say so in `note`).
 
+## Write like the creators people actually follow
+Measured on ~550 posts from top Meteora LPs (@EvilPanda, @crimexbt, @razzaer, @0xyunss, @SwannyDeFi,
+@0xMrBeefman, @Tuuxxdotsol, @Friday_SOL…) vs our own drafts:
+- **It's about me.** They say I / my / me 3–14 times a post; our drafts said it once. Every non-research post
+  needs a first-person angle, taken from `content/journal.md` (what I did, saw, lost, learned). If the journal
+  has nothing fitting, write a `[placeholder]` for the human to fill and say so in `note`. Never invent it.
+- **Open with a moment or a claim**, not a heading: "talked with a beginner today and…", "very proud of this one",
+  "you're not losing because of your strategy". Never "X this week, the LP version:".
+- **Short lines, one thought each.** Few or no bullets; lists only for a setup ("spot, -80%, 100 bin step").
+- **1–3 numbers**, ideally from a position. Not a stats dump.
+- **Casual and a bit imperfect**: "honestly", "ngl", "lol", "that's it", "stupid simple", "long af". 0–2 emoji.
+- Tag @MeteoraAG / @met_lparmy when it fits and credit people by handle. Ending with "nfa", a specific question,
+  or "will keep posting these" all read natural. A generic "what do you think?" doesn't.
+- News/recaps: one thing that caught my eye and my reaction to it, not a list of everything that happened.
+
 ## Sound human (most important)
 Posts must read like an LP typing on their phone, not like a newsletter, a press release or ChatGPT.
 - Write it like a text to a friend who LPs: first person, a real reaction or opinion, contractions, fragments
