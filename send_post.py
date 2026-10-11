@@ -3,6 +3,7 @@
 post.json: {"type": "...", "text": "...", "image": "out/chart.png" | null, "note": "optional note for you"}
 Env: DISCORD_WEBHOOK_URL, DRY_RUN=1
 """
+import base64
 import json
 import urllib.parse
 from pathlib import Path
@@ -10,7 +11,8 @@ from pathlib import Path
 from send_discord import buttons, send
 
 ROOT = Path(__file__).parent
-MAX_LEN = 300  # must also fit the one-tap button link (512 chars once URL-encoded)
+MAX_LEN = 700
+REDIRECT = "https://prithwiraj-ck.github.io/xauto/x.html"
 
 
 def x_length(text):
@@ -38,10 +40,15 @@ def main():
     if image:
         files = [ROOT / image]
         embed["image"] = {"url": f"attachment://{Path(image).name}"}
-    if len(link) > 512:  # Discord link buttons take URLs up to 512 chars; longer links get mangled when tapped
-        raise SystemExit(f"post is too long for the one-tap Post on X button ({len(link)}/512 link chars): shorten it")
     content = f"**📅 Today's post · {post.get('type', 'post')}** ({n} chars)"
-    send({"content": content, "embeds": [embed], "components": buttons([("🚀 Post on X", link)])}, files)
+    if len(link) > 512:
+        # Long prefilled links get mangled by Discord (%-escapes double-encoded), so send the text as base64url
+        # to a tiny page in this repo (GitHub Pages, docs/x.html) that opens X's composer with it. No % anywhere.
+        link = REDIRECT + "#" + base64.urlsafe_b64encode(text.encode()).decode().rstrip("=")
+    if len(link) <= 512:  # Discord link buttons take URLs up to 512 chars
+        send({"content": content, "embeds": [embed], "components": buttons([("🚀 Post on X", link)])}, files)
+    else:
+        send({"content": content + f"\n**[🚀 Post on X]({link})**", "embeds": [embed]}, files)
     print(f"Sent {post.get('type')} post to Discord")
 
 
