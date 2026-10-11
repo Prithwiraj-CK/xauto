@@ -32,8 +32,8 @@ except on research days. Never more than 2 pool posts a week. Never the same typ
 - **Formats that went viral for small accounts lately**: "LP from [place]" lifestyle photo, plain-English
   zero-to-hero explainers, "if I'd just made my first $1K LPing I'd…", "X shipped in Y months" lists,
   token/MET data nobody else points out.
-- **Length**: posts of 280–1,000 chars outperform short ones here (the account has Premium). Keep pool
-  posts tight (< 280); teach / journey / recap can run longer with line breaks.
+- **Length**: every post must fit the one-tap Post on X button: ~250 chars, hard max 300. Short and punchy
+  beats long here anyway while the account rebuilds reach; use line breaks, cut filler.
 - **One image whenever possible** (chart, screenshot, simple diagram). Say in `note` what image to attach
   if it isn't the chart.
 - **Tags**: @MeteoraAG / @met_lparmy only when it's genuinely about them, and credit the teacher whose idea

@@ -10,7 +10,7 @@ from pathlib import Path
 from send_discord import buttons, send
 
 ROOT = Path(__file__).parent
-MAX_LEN = 1000  # the account has Premium; X allows long posts, but keep most short
+MAX_LEN = 300  # must also fit the one-tap button link (512 chars once URL-encoded)
 
 
 def x_length(text):
@@ -38,16 +38,10 @@ def main():
     if image:
         files = [ROOT / image]
         embed["image"] = {"url": f"attachment://{Path(image).name}"}
-    content = f"**📅 Today's post · {post.get('type', 'post')}** ({n} chars{', long post' if n > 280 else ''})"
-    if len(link) <= 512:  # Discord link buttons take URLs up to 512 chars
-        send({"content": content, "embeds": [embed], "components": buttons([("🚀 Post on X", link)])}, files)
-    else:
-        # Long prefilled links come out double-encoded when tapped in Discord (in embeds and in message text),
-        # so send the bare text as its own message to copy, plus a button that opens an empty composer.
-        embed["description"] += "\n\n📋 *long post: copy the text from the next message, tap Open X, paste*"
-        send({"content": content, "embeds": [embed]}, files)
-        send({"content": text[:2000], "components": buttons([("🚀 Open X (paste the text)", "https://x.com/compose/post")]),
-              "allowed_mentions": {"parse": []}})
+    if len(link) > 512:  # Discord link buttons take URLs up to 512 chars; longer links get mangled when tapped
+        raise SystemExit(f"post is too long for the one-tap Post on X button ({len(link)}/512 link chars): shorten it")
+    content = f"**📅 Today's post · {post.get('type', 'post')}** ({n} chars)"
+    send({"content": content, "embeds": [embed], "components": buttons([("🚀 Post on X", link)])}, files)
     print(f"Sent {post.get('type')} post to Discord")
 
 

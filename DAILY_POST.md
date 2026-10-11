@@ -17,7 +17,8 @@ Run these steps in the repo root. Do not commit or push anything.
    (they suit `safety-breakdown`).
 7. Write `out/post.json`:
    `{"type": "<type>", "text": "<the post>", "image": "out/chart.png" or null, "note": "<one line for the human: why this post, what image to attach if not the chart, any [placeholder] to fill, link to put in a reply>"}`
-   Pool posts stay under 280 chars; other types may run up to ~1,000 (the account has Premium).
-8. `python3 send_post.py` (it rejects posts over 1,000 chars; shorten and rerun if so)
+   Every post must fit the one-tap Post on X button: keep it to ~250 chars (hard max 300, and the URL-encoded
+   link must stay under 512 chars; send_post.py checks). Write tight; cut, don't split.
+8. `python3 send_post.py` (it rejects posts too long for the one-tap button; shorten and rerun if so)
 9. `python3 spend.py end daily-post 1`
 10. Report the type, why it was chosen (trend or rhythm), and the post text.
