@@ -1,0 +1,19 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Opening X…</title>
+<body style="background:#000;color:#ccc;font:16px system-ui;padding:24px">
+<p id="m">Opening X…</p>
+<script>
+// The post text travels in the URL fragment as base64url, so no %-escapes exist for Discord to mangle.
+// The fragment never leaves the browser; this page only decodes it and hands it to X's composer.
+try {
+  const b = location.hash.slice(1).replace(/-/g, "+").replace(/_/g, "/");
+  const bytes = Uint8Array.from(atob(b + "=".repeat((4 - b.length % 4) % 4)), c => c.charCodeAt(0));
+  const text = new TextDecoder().decode(bytes);
+  location.replace("https://x.com/intent/post?text=" + encodeURIComponent(text));
+} catch (e) {
+  document.getElementById("m").textContent = "Couldn't read the post text from this link.";
+}
+</script>
+</body>
