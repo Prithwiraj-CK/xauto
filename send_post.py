@@ -38,8 +38,18 @@ def main():
     if image:
         files = [ROOT / image]
         embed["image"] = {"url": f"attachment://{Path(image).name}"}
-    send({"content": f"**📅 Today's post · {post.get('type', 'post')}** ({n} chars{', long post' if n > 280 else ''})", "embeds": [embed],
-          "components": buttons([("🚀 Post on X", link)])}, files)
+    content = f"**📅 Today's post · {post.get('type', 'post')}** ({n} chars{', long post' if n > 280 else ''})"
+    # Discord link buttons take URLs up to 512 chars. Longer prefilled links go in the message text
+    # (links inside embeds get double-encoded by Discord); past Discord's 2000-char limit, open a blank composer.
+    if len(link) <= 512:
+        components = buttons([("🚀 Post on X", link)])
+    elif len(content) + len(link) + 30 <= 2000:
+        content += f"\n**[🚀 Post on X]({link})**"
+        components = []
+    else:
+        embed["description"] += "\n\n📋 *too long for a prefilled link: copy the text above, then paste it in X*"
+        components = buttons([("🚀 Open X composer", "https://x.com/compose/post")])
+    send({"content": content, "embeds": [embed], "components": components}, files)
     print(f"Sent {post.get('type')} post to Discord")
 
 
