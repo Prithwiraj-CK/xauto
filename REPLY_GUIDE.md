@@ -5,7 +5,8 @@ Meteora/LP creators and their audiences. Not to sell. They must read like a real
 typing on their phone, not like AI.
 
 ## Pick
-- At most **10** drafts on the 1 PM IST run and **3** on the others (~15–20/day). These are caps: fewer is fine, zero is fine.
+- At most **2** drafts on the 1 PM IST run and **1** on the others (5/day max), and only for candidates with
+  `"watchlist": true`. These are caps: fewer is fine, zero is fine. (Account is rebuilding reach after a spam label.)
 - **Quality bar**: only draft if the reply is specific to *this* tweet (it couldn't be pasted under a
   different one). A real question about their setup or an informed take beats a generic reaction.
   If the best you have is "nice" or "this is the way", skip unless it's a watchlist account.
@@ -15,6 +16,15 @@ typing on their phone, not like AI.
   token shills with nothing to say, price-only posts, politics, anything you'd be embarrassed to be
   seen replying to, non-English, and tweets where you have nothing real to add.
 - Prefer: questions, strategy talk, PnL posts with a setup, safety/rug discussions, Meteora news.
+
+## What real replies under Meteora posts look like (237 replies studied, Oct 2026)
+- **Tiny.** Median ~20 characters. Most liked replies are one line.
+- **What gets likes:** remixing the post's own words into a joke ("metaplex mode" -> "meteoraplex mode"), a funny or
+  personal aside ("my tour is couch to fridge and back"), a small personal ask ("pls save me a shirt at breakpoint"),
+  community slang (gud fee tek, supercycle, 🪝, cooking), short honest hype ("too bullish on meteora").
+- **What doesn't:** polished analysis ("this is a smart move and much needed, building for…") gets 0–1 likes,
+  generic "great post 🔥", tagging other projects, anything that reads like a summary of the tweet.
+- Under creator posts (not official accounts) a real question about their setup still works best.
 
 ## Mix the reply types (never the same type twice in a row)
 - **Short reaction** (~40%): 1–8 words. "this is the way", "bid ask gang", "lol been there",
