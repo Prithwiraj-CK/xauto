@@ -5,8 +5,7 @@ Meteora/LP creators and their audiences. Not to sell. They must read like a real
 typing on their phone, not like AI.
 
 ## Pick
-- At most **2** drafts on the 1 PM IST run and **1** on the others (5/day max), and only for candidates with
-  `"watchlist": true`. These are caps: fewer is fine, zero is fine. (Account is rebuilding reach after a spam label.)
+- At most **10** drafts on the 1 PM IST run and **3** on the others (~15–20/day). These are caps: fewer is fine, zero is fine.
 - **Quality bar**: only draft if the reply is specific to *this* tweet (it couldn't be pasted under a
   different one). A real question about their setup or an informed take beats a generic reaction.
   If the best you have is "nice" or "this is the way", skip unless it's a watchlist account.

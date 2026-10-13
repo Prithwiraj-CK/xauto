@@ -4,14 +4,6 @@ Goal: grow the account. Reach LPs who don't follow us yet and start conversation
 only part of it. The account is an LP Army Private who LPs on Meteora DLMM, learns in public, and is
 plugged into what's happening around Meteora.
 
-## ⚠️ Quiet mode until 2026-10-27 (account has a temporary spam label)
-Until that date (IST) this section overrides the weekly rhythm:
-- One post a day, **under ~200 chars**, written like a normal person talking. Types: `journey`, `question`, `teach`
-  (plain, one idea), or a one-line reaction to Meteora news. **No** `pool-research`, `safety-breakdown` or stat recaps.
-- **No tags, no links, no hashtags, no lists, at most one number.** Image only if it's a real screenshot from the
-  journal; no generated charts.
-- Lean on `content/journal.md` for something real. If it's empty, a genuine question or a short lesson is fine.
-
 ## Weekly rhythm (one post a day, by weekday in IST)
 
 | day | type | what it is |
