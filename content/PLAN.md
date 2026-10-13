@@ -56,6 +56,9 @@ Measured on ~550 posts from top Meteora LPs (@EvilPanda, @crimexbt, @razzaer, @0
   or "will keep posting these" all read natural. A generic "what do you think?" doesn't.
 - News/recaps: one thing that caught my eye and my reaction to it, not a list of everything that happened.
 
+Live reference: `out/style.json` has the watchlist creators' best posts from the last 48h. Match how they sound,
+not what they say.
+
 ## Sound human (most important)
 Posts must read like an LP typing on their phone, not like a newsletter, a press release or ChatGPT.
 - Write it like a text to a friend who LPs: first person, a real reaction or opinion, contractions, fragments
