@@ -6,19 +6,35 @@ plugged into what's happening around Meteora.
 
 ## Weekly rhythm (one post a day, by weekday in IST)
 
+The account is a Solana / DeFi voice with an LP edge, not only Meteora.
+
 | day | type | what it is |
 |---|---|---|
-| Mon | `trend` | the biggest Meteora / DLMM / LP Army thing from `out/trends.json` (launch, MET move, campaign, meta like hooks), plus my LP take on what it means for LPs |
-| Tue | `pool-research` | a live pool from `out/pools.json` + chart (research day 1 of 2) |
-| Wed | `teach` | one concept from the playbook, explained plainly with an example (Spot vs Bid-Ask, the 2-signal exit, why 5–10% pools on new coins, the weekly crime/dry cycle). Credit the teacher by handle |
-| Thu | `question` | a real A/B/C question or hot take that people want to answer ("tight spot or wide bid-ask on a 2h-old coin?") |
-| Fri | `pool-research` or `safety-breakdown` | research day 2 of 2 |
-| Sat | `journey` | learning-in-public / LP lifestyle: a lesson, a mistake, a habit, "LP from wherever I am". Human, not polished |
-| Sun | `recap` | the week in Meteora: what shipped, protocol numbers, MET, the week's best LP lesson, and shout out 1–2 creators who taught something good this week |
+| Mon | `solana-viral` | the most viral Solana thing right now (`out/trends.json` → `solana-viral`, `community`, `solana-meta`) + my take on it |
+| Tue | `hot-take` | a controversy / debate post (rules below) |
+| Wed | `meteora` | the one Meteora post of the week: pick the strongest of pool research (+ chart), a teach post, or Meteora news |
+| Thu | `solana-viral` | the next viral Solana story (a different one than Monday) + my take |
+| Fri | `polymarket` | a market people are talking about (`out/trends.json` → `polymarket`): what the odds say, why the crowd might be wrong or right |
+| Sat | `hot-take` | a second controversy / debate post, on a different target than Tuesday |
+| Sun | `journey` | light and personal: a lesson, a question, what I'm watching next week. Short |
 
-**Override:** if `out/trends.json` shows something big in the last 48h (an official Meteora / LP Army post
-with 200+ likes, MET moving 20%+ on the day, a new LP Army campaign), post a `trend` that day instead,
-except on research days. Never more than 2 pool posts a week. Never the same type two days running.
+**Override:** if something huge breaks (an official Meteora post with 200+ likes, MET or SOL moving 20%+ in a day,
+a market-wide event), cover it that day instead and shift the rest. Never the same type two days running.
+
+### `hot-take` rules (spicy, never reckless)
+- Pick a fight with an **idea, product, practice or public statement**: a protocol design, a launchpad meta, KOL
+  shilling habits, a popular take you think is wrong, a ratio-worthy announcement. Use `out/trends.json` → `debates`
+  (posts with the most arguing in the replies) to find what people are already fighting about.
+- Naming an influencer or project is fine when the post is about **what they publicly said or did**.
+- "Exposing" needs **public receipts**: on-chain data, their own posts, published reports. Say what the receipt is
+  and put the link in a reply (`note`). If you can't point to proof, frame it as an opinion or a question.
+- Never: made-up facts, accusing anyone of scams or crimes without solid public evidence, private individuals,
+  personal attacks on looks/identity, calls to harass. Punch at public figures and products, not people's lives.
+- Strong opinion + one concrete reason + an invitation to argue ("change my mind", "who's actually defending this?").
+
+### `polymarket` rules
+- Talk about the market and the odds as information and opinion. Never "bet on X" or financial advice.
+- Best angles: the crowd vs the news, odds that moved fast, a market that says something about crypto/Solana.
 
 ## What gets reach in this niche (from ~1,100 2026 DLMM tweets + this week's trends)
 - **Questions and A/B choices get the most replies**; replies are the strongest reach signal.
