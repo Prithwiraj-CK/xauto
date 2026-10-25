@@ -24,6 +24,7 @@ BUDGET = min(float(os.getenv("STYLE_BUDGET_USD", "0.02")), 0.10)
 OFFICIAL = {"meteoraag", "met_lparmy", "meteoraeco", "meteoraidn", "solana", ME.lower()}
 SPAM = re.compile(r"airdrop|giveaway|drop (your|ur) (wallet|addy|sol)|dm me|follow back|presale|whitelist|"
                   r"check my|\bca:|100x|1000x|https?://", re.I)
+GIVEAWAY = re.compile(r"\bwinners?\b|congrat|\brt\s*(&|and|\+)|tag \d|retweet|pack worth|\$\d+ each", re.I)
 TOPIC = '(meteora OR dlmm OR "lp army" OR "damm v2" OR "dlmm pro")'
 spent = 0.0
 
@@ -71,6 +72,9 @@ def main():
         out["posts"] = out["posts"][:8]
     official = call("tweet/advanced_search", query=f"(from:MeteoraAG OR from:met_lparmy OR from:MeteoraEco) -filter:replies "
                                                    f"-filter:retweets since_time:{since}", queryType="Latest") or []
+    # giveaways draw the most replies, all "congrats ser": never use them as the tone reference
+    official, watch_posts = ([t for t in ts if not SPAM.search(t.get("text", "")) and not GIVEAWAY.search(t.get("text", ""))]
+                             for ts in (official, watch_posts))
     parents = sorted(official, key=lambda t: -t.get("replyCount", 0))[:1] + sorted(watch_posts, key=lambda t: -t.get("replyCount", 0))[:1]
     for p in parents:
         if p.get("replyCount", 0) < 3:
@@ -78,7 +82,7 @@ def main():
         for r in call("tweet/replies", tweetId=p["id"]) or []:
             text = clean(r.get("text"))
             a = r.get("author") or {}
-            if not text or SPAM.search(text) or a.get("userName", "").lower() == ME.lower():
+            if not text or SPAM.search(text) or GIVEAWAY.search(text) or a.get("userName", "").lower() == ME.lower():
                 continue
             out["replies"].append({"parent_author": (p.get("author") or {}).get("userName"), "parent_text": clean(p.get("text"))[:200],
                                    "likes": r.get("likeCount", 0), "text": text[:280]})
