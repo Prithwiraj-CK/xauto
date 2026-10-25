@@ -7,12 +7,41 @@ drafts.json: [{"id", "url", "author", "text", "reply", "why"?}, ...]
 """
 import json
 import os
+import re
 import urllib.parse
 import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).parent
 DRAFTS = ROOT / "out" / "drafts.json"
+MAX_CHARS = 100
+# phrases that read as AI (REPLY_GUIDE.md "Never" list plus repeat offenders)
+AI_TELLS = ["great point", "absolutely", "love this", "this is huge", "here's the thing", "that said", "moreover",
+            "worth noting", "not just", "game changer", "game-changer", "couldn't agree more", "spot on",
+            "the real alpha", "this is why", "imagine", "a monkey that", "one that", "the kind of"]
+
+
+def lint(reply):
+    """Reasons this draft reads as AI, empty if it passes. The guide is the real rule; this catches what slips through."""
+    low, why = reply.lower(), []
+    if len(reply) > MAX_CHARS:
+        why.append(f"{len(reply)} chars (max {MAX_CHARS})")
+    if any(c in reply for c in "—–;"):
+        why.append("dash or semicolon")
+    if reply.count(",") > 1 or re.search(r",[^,]*\band\b", low):
+        why.append("list")
+    if re.search(r"[.!?]\s+\S", reply.strip()):
+        why.append("more than one sentence")
+    if "#" in reply or "http" in low:
+        why.append("hashtag or link")
+    why += [f'"{t}"' for t in AI_TELLS if t in low]
+    return why
+
+
+def humanize(reply):
+    """Lowercase first letter (not acronyms) and drop a trailing period, like phone typing."""
+    r = reply.strip().rstrip(".")
+    return r[0].lower() + r[1:] if len(r) > 1 and r[0].isupper() and not r[1].isupper() else r
 
 
 def intent_url(tweet_id, reply):
@@ -72,6 +101,15 @@ def send(payload, files=()):
 
 def main():
     drafts = json.loads(DRAFTS.read_text()) if DRAFTS.exists() else []
+    kept = []
+    for d in drafts:
+        d["reply"] = humanize(d["reply"])
+        why = lint(d["reply"])
+        if why:
+            print(f"Dropped @{d['author']}: {d['reply']!r} ({', '.join(why)})")
+        else:
+            kept.append(d)
+    drafts = kept
     if not drafts:
         print("No drafts to send")
         return
