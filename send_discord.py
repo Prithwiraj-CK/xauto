@@ -16,7 +16,7 @@ ROOT = Path(__file__).parent
 DRAFTS = ROOT / "out" / "drafts.json"
 MAX_CHARS = 100
 # phrases that read as AI (REPLY_GUIDE.md "Never" list plus repeat offenders)
-AI_TELLS = ["great point", "absolutely", "love this", "this is huge", "here's the thing", "that said", "moreover",
+AI_TELLS = ["great point", "love this", "this is huge", "here's the thing", "that said", "moreover",
             "worth noting", "not just", "game changer", "game-changer", "couldn't agree more", "spot on",
             "the real alpha", "this is why", "imagine", "a monkey that", "one that", "the kind of"]
 
@@ -30,11 +30,13 @@ def lint(reply):
         why.append("dash or semicolon")
     if reply.count(",") > 1 or re.search(r",[^,]*\band\b", low):
         why.append("list")
-    if re.search(r"[.!?]\s+\S", reply.strip()):
-        why.append("more than one sentence")
+    if len(re.findall(r"[.!?]\s+\S", reply.strip())) > 1:
+        why.append("3+ sentences")
     if "#" in reply or "http" in low:
         why.append("hashtag or link")
     why += [f'"{t}"' for t in AI_TELLS if t in low]
+    if low.startswith("absolutely"):
+        why.append('"absolutely"')
     return why
 
 

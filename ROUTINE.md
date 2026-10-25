@@ -19,6 +19,7 @@ Run these steps in the repo root. Do not commit or push anything.
    These are caps, not targets: draft only replies that pass the guide's quality bar.
    Candidates with `"watchlist": true` come first in the file; prefer them:
    `[{"id": "...", "url": "...", "author": "...", "text": "<original tweet>", "reply": "<your draft>", "why": "<type: short|question|opinion · 3-6 words why>"}]`
+   About 1 in 3 should be a joke (see the guide's "Be funny" section); never force one.
    If nothing is worth replying to, write `[]`.
 4. `python3 send_discord.py`
 5. `python3 spend.py end replies 4`
