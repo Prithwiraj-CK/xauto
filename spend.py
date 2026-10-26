@@ -14,6 +14,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent
 
+# Load .env so TWITTERAPI_KEY and DISCORD_WEBHOOK_URL are available when run from cron / scripts
+_env = ROOT / ".env"
+if _env.exists():
+    for _l in _env.read_text().splitlines():
+        if "=" in _l and not _l.lstrip().startswith("#"):
+            _k, _v = _l.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip())
+
 
 def twitterapi_headers():
     """Locally the key comes from .env; in the cloud a network secret adds X-API-Key on the way out."""

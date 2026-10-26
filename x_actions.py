@@ -4,20 +4,23 @@
   python3 x_actions.py login                       -> one login ($0.10), saves the cookie to out/x_session.json
   python3 x_actions.py like <tweet_id>             -> $0.0006
   python3 x_actions.py reply <tweet_id> "text"     -> $0.0006
+  python3 x_actions.py tweet "text" [img ...]      -> uploads each image ($0.0006), then posts the tweet ($0.0006)
 
-Safety rails: one login only (refuses to log in again while a cookie exists, unless --force), a daily action cap
-(X_BOT_DAILY_CAP, default 5) and a minimum gap between actions (X_BOT_MIN_GAP_SEC, default 300). The same proxy is
-sent on every call. Stops on the first error from X: check the account by hand before retrying.
+Safety rails: one login only (refuses to log in again while a cookie exists, unless --force), and a minimum gap
+between actions (X_BOT_MIN_GAP_SEC, default 300). The same proxy is sent on every call. Stops on the first error
+from X: check the account by hand before retrying.
 
 Env (.env, gitignored): TWITTERAPI_KEY, X_BOT_USERNAME, X_BOT_EMAIL, X_BOT_PASSWORD, X_BOT_TOTP_SECRET (base32 seed),
 X_BOT_PROXY (http://user:pass@ip:port)
 """
 import json
+import mimetypes
 import os
 import sys
 import time
 import urllib.error
 import urllib.request
+import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).parent
@@ -71,10 +74,8 @@ def todays_actions():
 
 
 def guard():
-    """Daily cap + minimum gap, so a stray loop can't burst."""
+    """Minimum gap between actions, so a stray loop can't burst."""
     recent = todays_actions()
-    if len(recent) >= int(os.getenv("X_BOT_DAILY_CAP", 5)):
-        sys.exit(f"daily cap reached ({len(recent)} actions in the last 24h)")
     gap = int(os.getenv("X_BOT_MIN_GAP_SEC", 300))
     if recent and time.time() - max(recent) < gap:
         sys.exit(f"too soon: wait {int(gap - (time.time() - max(recent)))}s since the last action")
@@ -111,6 +112,45 @@ def act(path, body):
         sys.exit(f"stopped, X said: {res.get('message') or res}. Check the account by hand before retrying.")
     record()
     print("ok", {k: v for k, v in res.items() if k != "status"})
+    return res
+
+
+def upload_image(path):
+    """Upload one image via multipart. Does NOT count toward daily cap: media uploads are invisible to X."""
+    p = Path(path)
+    if not p.exists():
+        sys.exit(f"image not found: {path}")
+    mime = mimetypes.guess_type(p.name)[0] or "application/octet-stream"
+    boundary = f"----x{uuid.uuid4().hex}"
+    fields = {"login_cookies": cookies(), "proxy": need("X_BOT_PROXY")}
+    body = bytearray()
+    for k, v in fields.items():
+        body += f"--{boundary}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n{v}\r\n".encode()
+    body += f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{p.name}\"\r\nContent-Type: {mime}\r\n\r\n".encode()
+    body += p.read_bytes()
+    body += f"\r\n--{boundary}--\r\n".encode()
+    req = urllib.request.Request(f"{API}/upload_media_v2", data=bytes(body), method="POST",
+                                 headers={"X-API-Key": need("TWITTERAPI_KEY"),
+                                          "Content-Type": f"multipart/form-data; boundary={boundary}"})
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            res = json.load(r)
+    except urllib.error.HTTPError as e:
+        res = {"status": "error", "message": f"HTTP {e.code}: {e.read().decode()[:300]}"}
+    if res.get("status") != "success" or not res.get("media_id"):
+        sys.exit(f"image upload failed for {p.name}: {res.get('message') or res}")
+    print(f"uploaded {p.name} -> {res['media_id']}")
+    return res["media_id"]
+
+
+def cmd_tweet(text, images):
+    media_ids = [upload_image(i) for i in images]
+    body = {"tweet_text": text}
+    if media_ids:
+        body["media_ids"] = media_ids
+    if len(text) > 280:
+        body["is_note_tweet"] = True
+    act("create_tweet_v2", body)
 
 
 def main():
@@ -123,12 +163,14 @@ def main():
         act("like_tweet_v2", {"tweet_id": args[1]})
     elif cmd == "reply" and len(args) == 3:
         act("create_tweet_v2", {"tweet_text": args[2], "reply_to_tweet_id": args[1]})
+    elif cmd == "tweet" and len(args) >= 2:
+        cmd_tweet(args[1], args[2:])
     elif cmd == "status":
         s = read_json(SESSION, {})
         for k in ("TWITTERAPI_KEY", "X_BOT_USERNAME", "X_BOT_EMAIL", "X_BOT_PASSWORD", "X_BOT_TOTP_SECRET", "X_BOT_PROXY"):
             print(f"{k}: {'set' if os.getenv(k) else 'MISSING'}")
         print("session:", f"saved {(time.time() - s['at']) / 3600:.1f}h ago" if s else "none")
-        print(f"actions in last 24h: {len(todays_actions())} / {os.getenv('X_BOT_DAILY_CAP', 5)}")
+        print(f"actions in last 24h: {len(todays_actions())}  min gap: {os.getenv('X_BOT_MIN_GAP_SEC', 300)}s")
     else:
         sys.exit(__doc__)
 
