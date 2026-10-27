@@ -1,7 +1,8 @@
 # Meteora DLMM & LP knowledge base
 
 Everything learned while building @SinClair_0000's LP content: the LP Army Academy course,
-Meteora's docs and APIs, and live pool research. `knowledge/lp-notes.md` is the short version
+Meteora's docs and APIs, the community playbook from X, HawkFi's models, live pool research, and our
+own wallet study, backtests and paper trades (§17). `knowledge/lp-notes.md` is the short version
 the routines read; this is the full reference.
 
 ---
@@ -377,7 +378,44 @@ closed everything after 15–24h on total PnL (@0xMrBeefman). Only works in that
   choose fee token, LP + on-chain limit orders in the same pool.
 - Double-sided LP swaps routed through pumpswap can earn pump.fun **cashback** (check the app).
 
-### 15.11 Content angles this gives @SinClair_0000
+### 15.11 @0xMrBeefman's LP thread (Oct 2026)
+- **Fees are a position too**: claim and sell (or hold) fees according to what you expect the token to do,
+  not by habit.
+- **Check pool price vs market before entry**: if the DLMM pool is 10–20%+ off Jupiter, arbs trade through
+  your liquidity and you're the cheap side (he showed deposits losing up to 99%). Use the app's
+  **Sync with Jupiter** first. Add in parts, not all at once.
+- **Wide ≠ safe**: a very wide range with low fees is just inefficient. He prefers −50/−60% and accepting a
+  20–30% loss over sitting in a −95% range hoping for a pump.
+- **Hybrid ≈ Bid-Ask on IL, but prints near entry**: Bid-Ask at market earns almost nothing while price sits
+  at the top of its range; a hybrid (Spot near price + Bid-Ask below) earns from the start. He now runs
+  mostly hybrids or Spot.
+- **Timing**: Friday evening and all of Saturday (EU time) are the worst for slow cooks (thin flow).
+- **Don't open at market**: place the range below price and let it come to you, unless fees are high
+  *right now*.
+- His four rules: avoid tokens likely to dump hard · only pools that are printing · enter at your own
+  levels · cut a position that isn't printing, even if price is mid-range.
+
+### 15.12 HawkFi automation models (whitepaper, Oct 2026)
+HawkFi automates DLMM positions; two of the profitable wallets studied (§17) run through it. Its models are
+named recipes worth knowing as setups:
+- **HFL (High Frequency Liquidity)**: tight range, **swapless auto-rebalance the moment price leaves it**
+  (0-minute), fees collected into SOL; for high-volume pools with active price movement. Base model has a
+  stop loss on a 20% pool-price drop. Tight / Wide variants.
+- **Precision Hybrid**: 50% Spot + 50% Bid-Ask kept around the active bin and reshaped as price moves:
+  fees near price plus swing gains; 69 bins (Wide 149, Ultra Wide 250); **+ Rebalance** adds Ping Pong
+  so the whole range follows price.
+- **Precision Curve**: concentrated Curve, reshaped often ("2x fee concentration"); calm, high-volume pools.
+- **Precision Flip**: alternates between fee mode in volume spikes and swing mode in volatility spikes.
+- **Multi-day Cook Up (MCU)**: Spot + auto-compound + **up-only** auto-rebalance, for multi-hour to
+  multi-day LP in sideways or rising markets (Curve variant is more aggressive).
+- **Heart Attack**: tight Spot for **shallow** corrections in early, high-volume launches (Wide = deep
+  corrections; **Ping Pong / Bid-Ask-Flip** = flips liquidity to sell the retrace).
+- Building blocks: Reshape Liquidity, Auto-rebalance (swapped / swapless / Ping Pong), Auto-compound,
+  Auto-accumulate fees, Take Profit, Stop Loss.
+- The common thread: **keep liquidity where price is trading and move it when price moves**. That is what
+  the profitable wallets do by hand or by bot (§17).
+
+### 15.13 Content angles this gives @SinClair_0000
 Explain *why* wide-range SOL-sided works (fees from panic sellers); Spot vs Bid-Ask in one picture;
 the 2-indicator exit; why 5–10% pools on new coins; the weekly crime/dry cycle; copy-trader pool risk;
 "green fees ≠ green position" with a token-sided example; the DCA-into-SOL math. Credit teachers by
@@ -395,3 +433,74 @@ handle when using their frameworks; never present their PnL as yours.
 | RugCheck | `api.rugcheck.xyz/v1/tokens/{mint}/report/summary` | score, risks[{level,name}], lpLockedPct |
 | twitterapi.io (paid) | `api.twitterapi.io/twitter/tweet/advanced_search`, `/twitter/user/last_tweets`, `/oapi/my/info` | ~$0.15/1K tweets; header `X-API-Key`; balance = recharge_credits + total_bonus_credits (100K credits = $1) |
 | Meteora app | `app.meteora.ag/dlmm/{pool}` | open a position on that exact pool |
+
+---
+
+## 17. What the data says: profitable wallets, backtests, paper trading (Oct 2026)
+
+Our own measurements. Where they disagree with a teacher's rule of thumb, they describe what *made money*
+in the period measured, not a law.
+
+### 17.1 Nine profitable wallets (Valhalla/Meteora data, 1,066 positions from their last 30 days)
+Combined: **+125.7 SOL on 25,727 SOL deployed (+0.49% per position)**; fees 291 SOL, price/IL −166 SOL.
+Win rates 63–83%. Their edge is fees outrunning IL, many times a day, with small losses.
+- **Holds are short**: median hold 2 min (8D1m, FEFB), 13–27 min (FehD, BBRQ, 7aDH/HawkFi), 2–5 h
+  (Df2E, EuPt/HawkFi), 18 h (2Djf, the slow cooker). Holds over **24 h are the only bucket that loses on
+  average** (−0.42%, worst 10% −3.1%); 12–24 h holds were best (+2.5%).
+- **They follow price**: 35–71% of positions are reopened in the same pool **within 3 minutes** of closing
+  (re-centering / rebalancing). 6–25 positions open at once; 7–38 positions a day.
+- **Ranges**: median ~70 bins (one bin array, no extra rent) up to ~150; SOL below price with the bottom at
+  −50% to −78%, or two-sided roughly −40/−65% → +3/+8%. Ranges extending >15% above price did badly
+  (win 55%, worst 10% −13%). Under 40 bins: worst 10% −4.8%.
+- **Pools**: bin step 100 dominates (80–125 common); base fee 1–2% (up to 5%); 1h volume before entry
+  median $13K–150K; usually entered after a run-up (1h +2% to +89%) but 15–45% under the 24h high.
+  Pool age varies by style (median 1–2 h for the fast scalpers, 85–100 h for the slow ones).
+- **Losses stay small**: worst 2% of positions −10.5%, worst 1% −31%: almost all brand-new pools (< 1 h)
+  that rugged. Falling knives (1h move < −20%) won only 50%.
+- **Size**: median deposit 3–50 SOL, so bin-array and position rent are noise to them.
+- **What doesn't separate winners from losers**: pool age beyond the first hour, 24h-high distance,
+  volume above ~$30K/h, bin step, base fee. Management (short holds, re-centering, leaving when flow
+  dies) matters more than pool picking.
+
+### 17.2 Fee capture (calibrated on those wallets' real fees)
+Replaying their real positions through a fee model: share of a pool's fees ≈ position $ ÷ (position $ +
+L), with competing liquidity **L ≈ $30K + 0.3 × the pool's 1h volume**, weighted by how much of the position
+sits in the bins that traded (Bid-Ask is thin near price, so it earns less there). That reproduces their
+average fee (≈3% per position for 5 min–24 h holds). Our old paper model (share = $ ÷ TVL) was in the
+same ballpark on average but not checked against reality before.
+
+### 17.3 Backtests
+- **Our alert feed, 55 alerts, 5m candles**: holding 72 h loses (−$203 per $100 × 55); a small take-profit
+  (+2% incl. fees) with Bid-Ask −90% was slightly positive (+$43, 91% win) **before rent**; −60/−75%
+  ranges all lost; a 10% take-profit lost. Rent (0.071 SOL per new bin array) wipes a +2% win on a
+  0.5 SOL position.
+- **Wallet-style strategy on 354 pools the wallets traded (1,005 trades, 40 days, 5 SOL each)**:
+  pick a pool ≥ 6 h old with ≥ $60K volume in the last hour and not down > 20% in the last hour → **Spot
+  from +5% above price to −90%** (only if the bin arrays exist) → close and reopen when price is 6% above
+  entry (70% of exits) · close when 30-min volume < $5K · close below the range bottom · max 12 h.
+  Result **+3.0% per trade, 95% win, worst 2% −1.1%**; on pools the parameter search never saw +3.1%; on
+  our own alert pools (not wallet picks) +2.2%, 97% win; with 15% sell slippage still +2.5%.
+  Depth matters most: −80% → +2.5% (worst 2% −8%), −70% → +1.8% (worst 2% −24%). Pools ≥ 1 h instead of
+  ≥ 6 h: worst 2% −17%. **Spot beat Bid-Ask** once fees were weighted by where liquidity sits.
+  Caveat: a model, calibrated on averages; real results will be worse than a 95% win rate.
+
+### 17.4 Paper trading (alert-following bot, Oct 2026)
+- 7 of 7 take-profits closed +1.5% to +2.1%, most with price 16–35% **below** entry (fees covered it).
+- Losses came from things the rules didn't handle: **bin-array rent** (GME: trade +3.4%, result −11%),
+  a **14-minute-old pool that rugged 87% in 20 min** (MUSK2028, liquidity now $0), and **holding a
+  crashing fresh pool for days** (Moustache −40% at 60 h). Losers shared one sign: **the pool's liquidity
+  left** (TVL $0–$2.5K afterwards).
+- The data API price can lag minutes on fast pools; read the active bin on-chain for entries.
+- Fixes: never create bin arrays (cut the range to existing arrays or skip), on-chain entry price.
+
+### 17.5 Strategy menu by market condition (how the pieces fit)
+| Condition | Setup | Source |
+|---|---|---|
+| Hot pool (≥ $60K/h), ≥ 6 h old, not a falling knife | Spot +5%/−90%, re-center when price runs +6%, leave when volume dies, ≤ 12 h | §17.3, §17.1 |
+| Strong coin pumping near ATH, real volume, clean holders | SOL-sided Spot −86/−95% in a 5–10% pool after a 15m SuperTrend break; exit on RSI(2) > 90 + upper BB | §15.2 |
+| Dumped hard, now chopping sideways, still has buyers | Two-sided Bid-Ask (Bonus Stage), layer near lows, TP on pumps | §15.4 |
+| Price at the top of a calm range, steady flow | Hybrid (Spot near price + Bid-Ask below) or MCU-style Spot, up-only rebalance | §15.11, §15.12 |
+| Holding a bag after a dump | Token-sided Bid-Ask above price (DCA out with fees), or flip SOL BA → token BA | §15.5 |
+| Pool < 1–6 h old | Skip, or tiny size with −99% and a 5–10% fee pool | §15.2, §17.1 |
+| Falling knife (1h < −20%), liquidity leaving, pool vs Jupiter gap > 10% | Skip / close | §17.1, §17.4, §15.11 |
+| Dry market, or Fri evening–Sat for slow cooks | Do less, smaller | §15.8, §15.11 |

@@ -66,3 +66,20 @@ Tools: RugCheck, Bubblemaps, GMGN, DexScreener, Solscan, Jupiter, Meteora, Metle
 - **Pool structure**: lots of copy-trader TVL in one pool = they all dump when the lead wallet exits.
 - Dynamic positions allow 1,400 bins; Ape In is 69 bins (≈ −50% on bin step 100). Quote Token Fees let
   fees accrue in SOL/USDC.
+- **@0xMrBeefman**: check pool price vs Jupiter first (Sync with Jupiter, gap > 10–20% = you get arbed);
+  add in parts; wide ≠ safe (low fees + −95% is just inefficient); hybrids (Spot near price + Bid-Ask
+  below) print from the start where pure Bid-Ask sits idle; open below price and wait unless fees are hot
+  now; Fri evening–Sat (EU) is the worst for slow cooks; cut positions that aren't printing.
+- **HawkFi models** (automation): HFL (tight range, instant swapless rebalance), Precision Hybrid (50/50
+  Spot+BA reshaped around price), MCU (Spot + compound + up-only rebalance, multi-day), Heart Attack
+  (tight Spot for shallow corrections on launches). Theme: keep liquidity where price trades.
+
+## What our data says (full detail: DLMM_KNOWLEDGE.md §17)
+- 9 profitable wallets, 1,066 positions: +0.49% per position on average, fees outrun IL many times a day.
+  Holds are minutes to hours (only > 24 h holds lose on average); 35–71% reopened in the same pool within
+  3 min (they follow price); ~70–150 bins; worst 2% ≈ −10%, mostly < 1 h-old pools that rugged.
+- Backtest of that style (1,005 trades): pool ≥ 6 h old, ≥ $60K/h volume, not down > 20% in 1 h → Spot
+  +5%/−90% → re-center when price is +6%, leave when 30-min volume < $5K, max 12 h: +3.0%/trade in the
+  model (real results will be worse). Depth matters: −70% ranges took big losses.
+- Our alert paper bot: small take-profits worked; losses came from bin-array rent, a 14-minute-old pool
+  rugging, and holding a crashing fresh pool for days. Liquidity leaving the pool was the common sign.
