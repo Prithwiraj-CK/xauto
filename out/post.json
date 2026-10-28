@@ -1,6 +1,6 @@
 {
-  "type": "meteora",
-  "quote_tweet_url": "https://x.com/MeteoraAG/status/2114289772995002667",
-  "text": "transfer fees on DBC launches is the line that made me stop scrolling\n\nif a token can take a cut every time it moves, i want to know how that touches swaps in a pool i'm LPing\n\nhaven't read the docs yet. anyone already tested it on a DLMM pool?",
-  "note": "Wed meteora slot. QT of official @MeteoraAG weekly recap (174 likes, Oct 25) which lists 'Transfer Fees on Meteora DBC'. No tweet screenshot. First-person angle is only curiosity, no invented results. Journal empty so no personal detail used. Topic not in recent_posts (last Meteora posts were DLMM Pro 4th preset Oct 14, AAPL xStock Oct 26)."
+  "type": "solana-viral",
+  "quote_tweet_url": "https://x.com/MrketInsider/status/2114790308596822100",
+  "text": "ansem says he's never seen ct sentiment this bad\n\nngl that's usually when i like being an lp. fewer people chasing pumps, and volume still has to go somewhere\n\nfees don't care about the mood. or am i coping lol\n\nanyone else finding quieter pools lately?",
+  "note": "Thu solana-viral slot. QT of MrketInsider's post relaying Ansem's 'worst CT sentiment in 9 years' quote (68 likes, ~Oct 26-27; data from trends.json, 2 days old because the twitterapi search returned 403 on refresh). No tweet screenshot. No numbers or personal results invented; the LP angle is opinion only. Different story from Monday. Not in recent_posts. Verify the QT url still resolves before 8:30 cron."
 }
