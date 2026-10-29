@@ -1,6 +1,6 @@
 {
-  "type": "solana-viral",
-  "quote_tweet_url": "https://x.com/MrketInsider/status/2114790308596822100",
-  "text": "ansem says he's never seen ct sentiment this bad\n\nngl that's usually when i like being an lp. fewer people chasing pumps, and volume still has to go somewhere\n\nfees don't care about the mood. or am i coping lol\n\nanyone else finding quieter pools lately?",
-  "note": "Thu solana-viral slot. QT of MrketInsider's post relaying Ansem's 'worst CT sentiment in 9 years' quote (68 likes, ~Oct 26-27; data from trends.json, 2 days old because the twitterapi search returned 403 on refresh). No tweet screenshot. No numbers or personal results invented; the LP angle is opinion only. Different story from Monday. Not in recent_posts. Verify the QT url still resolves before 8:30 cron."
+  "type": "polymarket",
+  "quote_tweet_url": "https://x.com/apsiri13/status/2114642284490719537",
+  "text": "the most useful thing about polymarket isn't the odds, it's which market moves first\n\nwhen news drops, some related markets jump fast and others just sit there for hours. that lag is the whole story\n\nsame with pools tbh. volume shows up before price does\n\nanyone actually watching the slow markets?",
+  "note": "Fri polymarket slot. QT of apsiri13's post (244 likes, 301 replies, Oct 26) about studying how information travels through related markets. No tweet screenshot, no numbers, no personal results invented. LP parallel is opinion only. Skipped the BitcoinMagazine 'Fed hold 92%' tweet because the October FOMC has likely passed. Source data is from Oct 26-27 trends.json (twitterapi refresh returned 403). Verify QT url resolves before the 8:30 cron."
 }
