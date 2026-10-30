@@ -1,6 +1,6 @@
 {
-  "type": "polymarket",
-  "quote_tweet_url": "https://x.com/apsiri13/status/2114642284490719537",
-  "text": "the most useful thing about polymarket isn't the odds, it's which market moves first\n\nwhen news drops, some related markets jump fast and others just sit there for hours. that lag is the whole story\n\nsame with pools tbh. volume shows up before price does\n\nanyone actually watching the slow markets?",
-  "note": "Fri polymarket slot. QT of apsiri13's post (244 likes, 301 replies, Oct 26) about studying how information travels through related markets. No tweet screenshot, no numbers, no personal results invented. LP parallel is opinion only. Skipped the BitcoinMagazine 'Fed hold 92%' tweet because the October FOMC has likely passed. Source data is from Oct 26-27 trends.json (twitterapi refresh returned 403). Verify QT url resolves before the 8:30 cron."
+  "type": "hot-take",
+  "quote_tweet_url": "https://x.com/Hey_tyzo/status/2116084650280173698",
+  "text": "buying a fresh meme in minute one is just volunteering as exit liquidity\n\nzeru's launch research says 68.7% of devs start selling within 5 min. i can't even open the holders tab that fast\n\nif i'm touching a fresh launch at all i'd rather be the LP. dev sells, i earn the fee\n\nstill not safe, a dump through your range leaves you holding the bag lol\n\nwho's actually defending aping minute one?",
+  "note": "Sat hot-take slot (catch-up run). QT of Hey_tyzo's post (355 likes, 288 replies, Oct 30) summarizing @zerufinance launch research; the 68.7% / 5 min number is from that post, the QT is the receipt. Target is the 'ape in early' practice, not a person. No personal results invented (LP line is a preference). Different target than the Oct 24 SOLWHALEDYOR and Oct 27 hot-takes. Data refreshed tonight (trends/style/candidates)."
 }
