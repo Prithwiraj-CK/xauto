@@ -1,5 +1,19 @@
 # @SinClair_0000 X bot
 
+## Engage-Orbit jobs
+
+`orbit.py` uses the successful daily post stamp in `out/run_daily_state.json` and a separate Telegram user session. It does not reuse Chrome cookies or the old `TG_ENGAGE_CHAT` setting. Times below are **IST**:
+
+| Job | Time | Work |
+|---|---|---|
+| MEGA submission | 11:05 AM, retries 11:15 and 11:25 | Share the previous evening's Sinclair tweet once in the MEGA ENGAGE topic. |
+| MEGA engagement | 11:35 AM, retries 11:50 and 12:15 | After the close notice, read that session's links, like and write a specific reply of at least four words to each post, then react to each Telegram message. |
+| 10 LIKE SCROLL | 7 AM, noon, 5 PM, 10 PM | Like the latest ten other people's links, react on their Telegram messages, share Sinclair's latest tweet, then react 👍 to that message. The 10 PM run waits for today's tweet and retries at 10:20 and 10:40. |
+
+Actions are serialized and checkpointed in `out/orbit_state.json`. If a process stops during an external action, the next run **stops** and asks for inspection rather than possibly posting a duplicate. It does not automatically log in to X again. A failed X action or missing tweet text stops the batch; it never invents a reply or marks an uncompleted action done. The group may reject repeated links, even though this schedule shares a link on all four 10 LIKE runs as requested.
+
+Before enabling jobs, set up Telegram interactively with `python3 tg_setup.py` (needs Telegram API ID/hash and phone confirmation). Then run `python3 orbit.py check`, and test each mode during its window with `--dry`. Chrome's Telegram login alone is insufficient for unattended launchd runs. Install `launchd/com.sinclair.orbit-*.plist` into `~/Library/LaunchAgents/` and load them only after the check and dry run pass. The Mac must be awake, logged in, and online.
+
 At **9:31 PM IST**, `com.sinclair.codex-draft` runs Codex to research **today's** topic, validate the draft and immediately publish it through twitterapi.io. Research can take a few minutes. The 10:31 PM and 11:31 PM retries skip dates already posted. It uses `CODEX_DRAFT.md` and the weekly plan in `content/PLAN.md`. No next-day 1 PM daily-post job remains.
 
 Separate Codex reply sessions run at **1 PM, 3 PM, 8 PM and 11 PM IST** (`com.sinclair.codex-replies`). They follow `CODEX_REPLIES.md` and `REPLY_GUIDE.md`: up to 10 replies at 1 PM and up to 3 at each other session; fewer or zero are fine. There is no extra five-reply batch attached to the evening post. Per-session drafts are stored under `out/scheduled/YYYY-MM-DD/replies-HH/`.
