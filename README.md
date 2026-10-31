@@ -1,26 +1,19 @@
-# @SinClair_0000 X helper
+# @SinClair_0000 X bot
 
-Everything arrives in Discord with a one-tap link that opens X with the text filled in.
-No X API, no X developer account. You press Post yourself.
+Codex drafts tomorrow's post and five replies locally at 9:31 PM IST, with 10:31 PM and 11:31 PM retries. The job is `com.sinclair.codex-draft` and follows `CODEX_DRAFT.md`. It validates and pushes `out/post.json`, `out/drafts.json`, and `out/draft_state.json`. The Mac must be awake and online for a local draft run; launchd can catch up on wake.
 
-- **Daily post** (Claude cloud routine, 1x/day, steps in `DAILY_POST.md`): Claude picks a post type
-  from `content/PLAN.md` (pool research, safety breakdown, teaching, journey, question…), pulls live
-  Meteora DLMM data, draws a chart for pool posts, writes the post → Discord "🚀 Post on X" + image.
-- **Reply drafts** (Claude cloud routine, 4x/day, steps in `ROUTINE.md`): fresh Meteora/LP tweets →
-  drafted replies → Discord "✍️ Reply on X".
-
-Cost: twitterapi.io reads ~$2–3/month. Meteora + RugCheck data are free. Claude runs on your plan.
+At 1 PM IST, `com.sinclair.x-daily` runs `run_daily.py` locally. It checks the Codex draft date and file digests, posts the tweet through twitterapi.io, then starts `run_replies.py` for five replies spaced by random 30–60 minute gaps. Discord receives summaries only. The old Claude drafting schedules are paused.
 
 ## Files
 
 | file | what |
 |---|---|
 | `content/PLAN.md` | post types, mix, voice and rules: edit this to change what gets posted |
-| `content/teaching_bank.json` | evergreen teaching posts Claude can use or adapt |
-| `knowledge/lp-notes.md` | LP Army Academy + Meteora notes Claude writes from |
+| `content/teaching_bank.json` | evergreen teaching posts the drafter can use or adapt |
+| `knowledge/lp-notes.md` | LP Army Academy + Meteora notes for the drafter |
 | `research.py` | `scan` top pools (fee/TVL, volume, safety) · `chart <address>` → `out/chart.png` |
 | `history.py` | your recent tweets, so posts don't repeat |
-| `send_post.py` / `send_discord.py` | send the daily post / reply drafts to Discord |
+| `run_daily.py` / `run_replies.py` | post the daily tweet and spaced replies |
 | `scan.py`, `REPLY_GUIDE.md`, `config/creators.txt` | reply helper |
 | `trends.py` | last 48h of Meteora / DLMM / LP Army talk for trend posts (budget-capped, max $0.10) |
 | `spend.py` | twitterapi.io balance; each routine run posts its cost + balance to Discord, warns under $1 |
@@ -90,19 +83,9 @@ message IDs in memory to avoid duplicates; history is not persisted across
 restarts. Thread IDs must be allowlisted explicitly. The existing X drafts
 and webhook scripts run separately and are not fed by this reader.
 
-## Cloud environment (claude.ai/code → Default environment)
+## Local environment
 
-- Network secret: twitterapi.io key, host `api.twitterapi.io`, header `X-API-Key`, no prefix
-  (the proxy adds it; sessions never see it)
-- Env var: `DISCORD_WEBHOOK_URL`
-- Network access: `api.twitterapi.io`, `discord.com`, `dlmm.datapi.meteora.ag`, `api.dexscreener.com`,
-  `api.rugcheck.xyz`,
-  plus PyPI (for `pip install matplotlib`)
-
-## Posting with an image
-
-Discord shows the image above the link. On your phone: long-press the image → Save, tap
-**Post on X**, tap the image icon in X, pick it, Post.
+Keep `TWITTERAPI_KEY`, `DISCORD_WEBHOOK_URL`, and `X_BOT_USERNAME` in the gitignored `.env`. The Codex CLI uses the local ChatGPT sign-in. `out/codex_draft.log` records the draft run and `out/run_daily.log` and `out/run_replies.log` record posting. The draft job commits and pushes only after validation; if the Codex draft is missing or later changed, the 1 PM poster refuses to use it.
 
 ## Growth playbook
 
