@@ -1,55 +1,67 @@
-"""Send today's post draft (out/post.json) to Discord with its image and a one-tap "Post on X" link.
+"""Auto-post today's draft from out/post.json via x_actions.py.
+Legacy name kept so anything invoking `python3 send_post.py` still works.
+The webhook now only receives a short ✅ summary with the posted tweet URL; no tap-cards.
 
-post.json: {"type": "...", "text": "...", "image": "out/chart.png" | null, "note": "optional note for you"}
-Env: DISCORD_WEBHOOK_URL, DRY_RUN=1
+post.json: {"type": "...", "text": "...", "quote_tweet_url"?: "...", "images"?: [...], "note"?: "..."}
+Env: DISCORD_WEBHOOK_URL (summary only), TWITTERAPI_KEY (via x_actions)
+     DRY_RUN=1  -> print what would happen, change nothing
 """
-import base64
 import json
-import urllib.parse
+import os
+import re
+import subprocess
+import sys
 from pathlib import Path
 
-from send_discord import buttons, send
+from send_discord import send
 
 ROOT = Path(__file__).parent
-MAX_LEN = 700
-REDIRECT = "https://prithwiraj-ck.github.io/xauto/x.html"
-
-
-def x_length(text):
-    """X's weighted length: most Latin chars count 1, everything else (emoji, arrows, CJK) counts 2."""
-    one = [(0, 4351), (8192, 8205), (8208, 8223), (8242, 8247)]
-    return sum(1 if any(a <= ord(c) <= b for a, b in one) else 2 for c in text)
 
 
 def main():
-    post = json.loads((ROOT / "out" / "post.json").read_text())
-    text = post["text"]
-    n = x_length(text)
-    if n > MAX_LEN:
-        raise SystemExit(f"post is {n} chars, over {MAX_LEN}: shorten it")
+    post_path = ROOT / "out" / "post.json"
+    if not post_path.exists():
+        send({"content": "⚠️ No out/post.json — nothing to post."})
+        return
+    post = json.loads(post_path.read_text())
+    text = post.get("text", "").strip()
+    if not text:
+        send({"content": "⚠️ post.json has empty text — refusing to post."})
+        return
+    qt_url = post.get("quote_tweet_url") or ""
+    images = post.get("images") or ([post["image"]] if post.get("image") else [])
+    if not qt_url and not images:
+        send({"content": "⚠️ post.json has no proof (quote_tweet_url OR images required) — refusing to post."})
+        return
+    if qt_url and images:
+        send({"content": "⚠️ post.json has both quote_tweet_url AND images — pick one. Refusing to post."})
+        return
+    for img in images:
+        if not (ROOT / img).exists():
+            send({"content": f"⚠️ proof image missing: `{img}` — refusing to post."})
+            return
 
-    link = "https://x.com/intent/post?" + urllib.parse.urlencode({"text": text}, quote_via=urllib.parse.quote)
-    lines = [text, ""]
-    image = post.get("image")
-    if image:
-        lines.append("🖼️ *save the image below, then attach it in X before posting*")
-    if post.get("note"):
-        lines.append(f"📝 *{post['note']}*")
-    embed = {"description": "\n".join(lines), "color": 0x1D9BF0}
-    files = []
-    if image:
-        files = [ROOT / image]
-        embed["image"] = {"url": f"attachment://{Path(image).name}"}
-    content = f"**📅 Today's post · {post.get('type', 'post')}** ({n} chars)"
-    if len(link) > 512:
-        # Long prefilled links get mangled by Discord (%-escapes double-encoded), so send the text as base64url
-        # to a tiny page in this repo (GitHub Pages, docs/x.html) that opens X's composer with it. No % anywhere.
-        link = REDIRECT + "#" + base64.urlsafe_b64encode(text.encode()).decode().rstrip("=")
-    if len(link) <= 512:  # Discord link buttons take URLs up to 512 chars
-        send({"content": content, "embeds": [embed], "components": buttons([("🚀 Post on X", link)])}, files)
+    if os.getenv("DRY_RUN"):
+        preview = f"QT {qt_url}" if qt_url else f"images: {images}"
+        print(f"[DRY] would post ({len(text)} chars, {preview}):\n{text}")
+        return
+
+    if qt_url:
+        cmd = [sys.executable, "x_actions.py", "qt", qt_url, text]
     else:
-        send({"content": content + f"\n**[🚀 Post on X]({link})**", "embeds": [embed]}, files)
-    print(f"Sent {post.get('type')} post to Discord")
+        cmd = [sys.executable, "x_actions.py", "tweet", text, *images]
+    r = subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True)
+    out = r.stdout.strip()
+    if r.returncode != 0 or "post tweet success" not in out:
+        send({"content": f"❌ Post failed:\n```{(r.stderr or out)[:1500]}```"})
+        raise SystemExit(1)
+    m = re.search(r"'tweet_id': '(\d+)'", out)
+    tid = m.group(1) if m else None
+    url = f"https://x.com/{os.environ.get('X_BOT_USERNAME','SinClair_0000')}/status/{tid}" if tid else "(no id)"
+    kind = post.get("type", "post")
+    note = f"\n*note:* {post['note']}" if post.get("note") else ""
+    send({"content": f"✅ **Posted** · {kind} ({len(text)} chars)\n{url}{note}"})
+    print(f"posted: {url}")
 
 
 if __name__ == "__main__":

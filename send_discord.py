@@ -1,28 +1,28 @@
-"""Send drafted replies from out/drafts.json to Discord, each with a one-click "Reply on X" link.
+"""Auto-post drafted replies from out/drafts.json via x_actions.py with random 30-60 min gaps.
+Legacy name kept so anything invoking `python3 send_discord.py` still works.
+The webhook now only receives a short ✅ summary of what was queued; no tap-cards.
 
-Env: DISCORD_WEBHOOK_URL
-     DRY_RUN=1  -> print the payload instead of sending
-
-drafts.json: [{"id", "url", "author", "text", "reply", "why"?}, ...]
+Env: DISCORD_WEBHOOK_URL (summary only), TWITTERAPI_KEY (via x_actions)
+     DRY_RUN=1  -> print what would happen, change nothing
 """
 import json
 import os
 import re
-import urllib.parse
+import subprocess
+import sys
 import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).parent
 DRAFTS = ROOT / "out" / "drafts.json"
+PENDING = ROOT / "out" / "pending_replies.json"
 MAX_CHARS = 100
-# phrases that read as AI (REPLY_GUIDE.md "Never" list plus repeat offenders)
 AI_TELLS = ["great point", "love this", "this is huge", "here's the thing", "that said", "moreover",
             "worth noting", "not just", "game changer", "game-changer", "couldn't agree more", "spot on",
             "the real alpha", "this is why", "imagine", "a monkey that", "one that", "the kind of"]
 
 
 def lint(reply):
-    """Reasons this draft reads as AI, empty if it passes. The guide is the real rule; this catches what slips through."""
     low, why = reply.lower(), []
     if len(reply) > MAX_CHARS:
         why.append(f"{len(reply)} chars (max {MAX_CHARS})")
@@ -41,94 +41,77 @@ def lint(reply):
 
 
 def humanize(reply):
-    """Lowercase first letter (not acronyms) and drop a trailing period, like phone typing."""
     r = reply.strip().rstrip(".")
     return r[0].lower() + r[1:] if len(r) > 1 and r[0].isupper() and not r[1].isupper() else r
 
 
-def intent_url(tweet_id, reply):
-    return "https://x.com/intent/post?" + urllib.parse.urlencode(
-        {"in_reply_to": tweet_id, "text": reply}, quote_via=urllib.parse.quote
-    )
-
-
-def embed(d):
-    tweet = d["text"] if len(d["text"]) <= 700 else d["text"][:700] + "…"
-    parts = [
-        f"> {tweet.replace(chr(10), chr(10) + '> ')}",
-        f"**Draft reply:**\n{d['reply']}",
-    ]
-    if d.get("why"):
-        parts.append(f"*{d['why']}*")
-    parts.append(f"[open tweet]({d['url']}) · tap **✍️ Reply @{d['author']}** below")
-    return {
-        "title": f"@{d['author']}",
-        "url": d["url"],
-        "description": "\n\n".join(parts)[:4000],
-        "color": 0xF5A623,
-    }
-
-
-def buttons(links):
-    """Link buttons, 5 per row. Discord mangles percent-encoded links inside embeds, but not in buttons."""
-    btns = [{"type": 2, "style": 5, "label": label[:80], "url": url} for label, url in links]
-    return [{"type": 1, "components": btns[i : i + 5]} for i in range(0, len(btns), 5)]
+# Kept so spend.py / run_daily.py / engage_page.py still import these without breaking:
+def buttons(*a, **k):
+    return []
 
 
 def send(payload, files=()):
-    """POST to the webhook. `files` are local paths sent as attachments (multipart)."""
+    """POST a plain content message to the webhook. files are ignored — we don't ship attachments any more."""
     if os.getenv("DRY_RUN"):
-        print(json.dumps(payload, indent=2, ensure_ascii=False), *(f"[attach {f}]" for f in files))
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
         return
-    if files:
-        boundary = "sinclairxbotboundary"
-        parts = [f'--{boundary}\r\nContent-Disposition: form-data; name="payload_json"\r\n'
-                 f"Content-Type: application/json\r\n\r\n{json.dumps(payload)}\r\n".encode()]
-        for i, f in enumerate(files):
-            f = Path(f)
-            parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="files[{i}]"; filename="{f.name}"\r\n'
-                         f"Content-Type: image/png\r\n\r\n".encode() + f.read_bytes() + b"\r\n")
-        data = b"".join(parts) + f"--{boundary}--\r\n".encode()
-        ctype = f"multipart/form-data; boundary={boundary}"
-    else:
-        data, ctype = json.dumps(payload).encode(), "application/json"
-    req = urllib.request.Request(
-        os.environ["DISCORD_WEBHOOK_URL"] + ("?with_components=true" if payload.get("components") else ""),
-        data=data,
-        headers={"Content-Type": ctype, "User-Agent": "sinclair-x-bot"},
-        method="POST",
-    )
-    urllib.request.urlopen(req, timeout=60).read()
+    url = os.environ.get("DISCORD_WEBHOOK_URL")
+    if not url:
+        return
+    data = json.dumps(payload).encode()
+    req = urllib.request.Request(url, data=data,
+                                 headers={"Content-Type": "application/json", "User-Agent": "sinclair-x-bot"},
+                                 method="POST")
+    try:
+        urllib.request.urlopen(req, timeout=30).read()
+    except Exception as e:
+        print(f"webhook err: {e}", file=sys.stderr)
 
 
 def main():
     drafts = json.loads(DRAFTS.read_text()) if DRAFTS.exists() else []
     kept = []
+    dropped = []
     for d in drafts:
         d["reply"] = humanize(d["reply"])
         why = lint(d["reply"])
         if why:
-            print(f"Dropped @{d['author']}: {d['reply']!r} ({', '.join(why)})")
+            dropped.append((d.get("author", "?"), ", ".join(why)))
         else:
             kept.append(d)
-    drafts = kept
-    if not drafts:
-        print("No drafts to send")
+    if not kept:
+        send({"content": f"ℹ️ No replies to queue ({len(dropped)} dropped by lint)."})
+        print("No drafts to queue")
         return
-    # Discord allows 10 embeds and 6000 embed characters per message
-    batches, size = [[]], 0
-    for d in drafts:
-        n = len(f"@{d['author']}") + len(embed(d)["description"])
-        if batches[-1] and (len(batches[-1]) == 10 or size + n > 5800):
-            batches.append([])
-            size = 0
-        batches[-1].append(d)
-        size += n
-    for i, batch in enumerate(batches):
-        content = f"**{len(drafts)} new reply draft{'s' if len(drafts) != 1 else ''}**" if i == 0 else None
-        send({"content": content, "embeds": [embed(d) for d in batch],
-              "components": buttons((f"✍️ Reply @{d['author']}", intent_url(d["id"], d["reply"])) for d in batch)})
-    print(f"Sent {len(drafts)} drafts to Discord")
+    added = kept
+    authors = ", ".join(f"@{d['author']}" for d in added)
+    if os.getenv("DRY_RUN"):
+        msg = f"[DRY] would queue **{len(added)}** repl{'ies' if len(added) != 1 else 'y'}: {authors}"
+        send({"content": msg})
+        print(msg)
+        return
+    # Append to any pending queue (don't clobber in-flight)
+    existing = json.loads(PENDING.read_text()) if PENDING.exists() else []
+    existing_ids = {d.get("id") for d in existing}
+    added = [d for d in kept if d.get("id") not in existing_ids]
+    PENDING.parent.mkdir(exist_ok=True)
+    PENDING.write_text(json.dumps(existing + added, indent=2))
+    # Refuse to spawn a second runner if one is already working the queue
+    if any("run_replies.py" in (p or "") for p in subprocess.run(
+            ["pgrep", "-fl", "run_replies.py"], capture_output=True, text=True).stdout.splitlines()):
+        send({"content": f"ℹ️ Added **{len(added)}** to the live reply queue (runner already up): {authors}"})
+        print("runner already running, appended to queue")
+        return
+    runner = ROOT / "run_replies.py"
+    pid = subprocess.Popen([sys.executable, str(runner)],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                           start_new_session=True, cwd=str(ROOT)).pid
+    msg = (f"✅ Queued **{len(added)}** repl{'ies' if len(added) != 1 else 'y'} to auto-post "
+           f"(30–60 min random gaps, pid {pid}): {authors}")
+    if dropped:
+        msg += f"\n⛔ Dropped {len(dropped)}: " + "; ".join(f"@{a} ({w})" for a, w in dropped)
+    send({"content": msg})
+    print(msg)
 
 
 if __name__ == "__main__":

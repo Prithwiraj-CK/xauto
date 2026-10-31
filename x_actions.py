@@ -5,6 +5,8 @@
   python3 x_actions.py like <tweet_id>             -> $0.0006
   python3 x_actions.py reply <tweet_id> "text"     -> $0.0006
   python3 x_actions.py tweet "text" [img ...]      -> uploads each image ($0.0006), then posts the tweet ($0.0006)
+  python3 x_actions.py qt <tweet_url> "text"       -> quote-tweet the given tweet with text ($0.0006)
+  python3 x_actions.py rt <tweet_id>               -> retweet ($0.0006)
 
 Safety rails: one login only (refuses to log in again while a cookie exists, unless --force), and a minimum gap
 between actions (X_BOT_MIN_GAP_SEC, default 300). The same proxy is sent on every call. Stops on the first error
@@ -153,6 +155,18 @@ def cmd_tweet(text, images):
     act("create_tweet_v2", body)
 
 
+def cmd_qt(url, text):
+    """Quote-tweet via attachment_url. url can be the full x.com/.../status/<id> URL."""
+    body = {"tweet_text": text, "attachment_url": url}
+    if len(text) > 280:
+        body["is_note_tweet"] = True
+    act("create_tweet_v2", body)
+
+
+def cmd_rt(tweet_id):
+    act("retweet_tweet_v2", {"tweet_id": tweet_id})
+
+
 def main():
     load_env()
     args = [a for a in sys.argv[1:] if a != "--force"]
@@ -165,6 +179,10 @@ def main():
         act("create_tweet_v2", {"tweet_text": args[2], "reply_to_tweet_id": args[1]})
     elif cmd == "tweet" and len(args) >= 2:
         cmd_tweet(args[1], args[2:])
+    elif cmd == "qt" and len(args) == 3:
+        cmd_qt(args[1], args[2])
+    elif cmd == "rt" and len(args) == 2:
+        cmd_rt(args[1])
     elif cmd == "status":
         s = read_json(SESSION, {})
         for k in ("TWITTERAPI_KEY", "X_BOT_USERNAME", "X_BOT_EMAIL", "X_BOT_PASSWORD", "X_BOT_TOTP_SECRET", "X_BOT_PROXY"):

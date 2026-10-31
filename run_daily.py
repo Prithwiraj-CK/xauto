@@ -6,12 +6,14 @@
   python3 run_daily.py --reply-only-> just queue replies, no daily tweet
 
 Inputs:
-  out/post.json      {"type", "text", "images": [...], "note"?}       <-- today's post
+  out/post.json      {"type", "text", "quote_tweet_url"?, "images"?: [...], "note"?}  <-- today's post
+                     Prefer quote_tweet_url when the post reacts to a specific tweet (QT, not screenshot).
+                     Use images only for non-tweet proofs (DexScreener charts, Meteora numbers, etc).
   out/drafts.json    [{"id": "<tweet_id>", "author", "text", "reply"}, ...]  <-- replies to send
 
 Guards (hard rules):
   - Lints post text + every reply for AI tells; refuses to post anything that fails
-  - Requires at least one proof image on the daily post (hard rule)
+  - Requires either quote_tweet_url OR at least one proof image on the daily post (hard rule: never post bare)
   - Skips if today's post already posted (stamp in out/run_daily_state.json)
   - Stops the reply chain on the first X failure, logs which ones didn't post
   - Random 30-60 min gaps between replies, each as its own run
@@ -49,6 +51,10 @@ REPLY_AI_TELLS = [
     "worth noting", "not just", "game changer", "game-changer", "couldn't agree more", "spot on",
     "the real alpha", "this is why", "imagine", "a monkey that", "one that", "the kind of",
 ]
+# words we've been leaning on too hard — allowed at most once, flag the draft otherwise
+OVERUSED = {"lol": 1, "honestly": 1, "ngl": 1, "tbh": 1, "literally": 1, "basically": 1}
+# post types that MUST have proof (QT url or screenshot). Everything else can go pure personal.
+POST_TYPES_REQUIRING_PROOF = {"solana-viral", "polymarket", "meteora"}
 
 
 def load_env():
@@ -119,6 +125,10 @@ def lint_reply(text):
     why += [f'"{t}"' for t in REPLY_AI_TELLS if t in low]
     if low.startswith("absolutely"):
         why.append('"absolutely"')
+    for word, cap in OVERUSED.items():
+        n = len(re.findall(rf"\b{re.escape(word)}\b", low))
+        if n > cap:
+            why.append(f'"{word}" x{n} (max {cap})')
     return why
 
 
@@ -135,17 +145,33 @@ def spend_end(label):
     log(r.stdout.strip() or r.stderr.strip())
 
 
+def webhook(msg):
+    """Reuse send_discord.send so it matches the user-agent that already works for spend summaries."""
+    try:
+        from send_discord import send
+        send({"content": msg[:1900]})
+    except Exception as e:
+        log(f"webhook err: {e}")
+
+
 def post_daily(dry):
     if not POST.exists():
         log("no out/post.json: skip daily tweet")
         return None
     p = json.loads(POST.read_text())
-    text, images = p.get("text", ""), p.get("images") or ([p["image"]] if p.get("image") else [])
+    text = p.get("text", "")
+    qt_url = p.get("quote_tweet_url") or ""
+    images = p.get("images") or ([p["image"]] if p.get("image") else [])
+    ptype = p.get("type", "")
     if not text:
         log("post.json has empty text, skip")
         return None
-    if not images:
-        log("HARD RULE: post has no proof image, refusing to post")
+    needs_proof = ptype in POST_TYPES_REQUIRING_PROOF
+    if needs_proof and not qt_url and not images:
+        log(f"HARD RULE: {ptype} needs proof (quote_tweet_url OR images), refusing")
+        return None
+    if qt_url and images:
+        log("HARD RULE: post has both quote_tweet_url and images; pick one (QT is preferred for tweet-reactions)")
         return None
     for img in images:
         if not (ROOT / img).exists():
@@ -155,11 +181,15 @@ def post_daily(dry):
     if why:
         log(f"HARD RULE: post lint failed ({', '.join(why)}), refusing to post")
         return None
-    log(f"post lint ok ({len(text)} chars, {len(images)} proof image{'s' if len(images)!=1 else ''})")
+    proof = f"QT {qt_url}" if qt_url else f"{len(images)} proof image{'s' if len(images)!=1 else ''}"
+    log(f"post lint ok ({len(text)} chars, {proof})")
     if dry:
         log(f"[dry] would post: {text[:120]}...")
         return "DRY"
-    r = run([sys.executable, "x_actions.py", "tweet", text, *images])
+    if qt_url:
+        r = run([sys.executable, "x_actions.py", "qt", qt_url, text])
+    else:
+        r = run([sys.executable, "x_actions.py", "tweet", text, *images])
     log(r.stdout.strip())
     if r.returncode != 0 or "post tweet success" not in r.stdout:
         log(f"daily tweet FAILED: {r.stderr.strip()}")
@@ -239,6 +269,16 @@ def main():
         state[today] = done
         write_state(state)
         spend_end("daily run (tweet only)")
+
+    tid = done.get("post_tweet_id")
+    n = done.get("replies_queued", 0)
+    if tid and tid != "DRY":
+        url = f"https://x.com/{os.environ.get('X_BOT_USERNAME','SinClair_0000')}/status/{tid}"
+        webhook(f"posted: {url}\nreplies queued: {n} (random 30-60min gaps)")
+    elif args.dry:
+        pass
+    else:
+        webhook(f"no post today (see out/run_daily.log); replies queued: {n}")
 
     log(f"run_daily done: {done}")
 
