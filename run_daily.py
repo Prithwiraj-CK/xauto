@@ -22,6 +22,7 @@ Discord webhook only gets $ spent summaries.
 Env: TWITTERAPI_KEY, DISCORD_WEBHOOK_URL, X_BOT_* (loaded from .env automatically)
 """
 import argparse
+import hashlib
 import json
 import os
 import random
@@ -89,6 +90,20 @@ def write_state(s):
 
 def today_utc_str():
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+def codex_draft_valid(today):
+    """Require the exact draft files validated by the Codex evening job."""
+    try:
+        stamp = json.loads((ROOT / "out" / "draft_state.json").read_text())
+        if stamp.get("drafted_for") != today or stamp.get("generator") != "codex" or stamp.get("failed"):
+            return False
+        for name, path in (("post_sha256", POST), ("drafts_sha256", DRAFTS)):
+            if stamp.get(name) != hashlib.sha256(path.read_bytes()).hexdigest():
+                return False
+        return True
+    except (OSError, ValueError):
+        return False
 
 
 def lint_post(text):
@@ -254,6 +269,11 @@ def main():
     today = today_utc_str()
     if state.get(today) and not args.force and not args.dry:
         log(f"already ran for {today}: {state[today]}. Use --force to re-run.")
+        return
+
+    if not args.dry and not args.reply_only and today >= "2026-11-01" and not codex_draft_valid(today):
+        log("Codex draft missing, stale, or changed after validation; refusing to post")
+        webhook("no post today: Codex draft missing or changed after validation (see out/run_daily.log)")
         return
 
     spend_start()

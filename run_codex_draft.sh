@@ -61,6 +61,15 @@ if any(n > 1 for n in words.values()):
     raise SystemExit('A crutch word appears in multiple replies')
 PY
     /usr/bin/python3 run_daily.py --dry
+    /usr/bin/python3 - <<'PY'
+import hashlib, json
+from pathlib import Path
+path = Path('out/draft_state.json')
+state = json.loads(path.read_text())
+state['post_sha256'] = hashlib.sha256(Path('out/post.json').read_bytes()).hexdigest()
+state['drafts_sha256'] = hashlib.sha256(Path('out/drafts.json').read_bytes()).hexdigest()
+path.write_text(json.dumps(state, indent=2) + '\n')
+PY
     git add out/post.json out/drafts.json out/draft_state.json
     git -c user.name='Prithwiraj CK' -c user.email='prithwirajck2@gmail.com' commit -m "Daily Codex draft for $target"
     git push origin main
