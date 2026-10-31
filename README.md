@@ -12,7 +12,7 @@
 
 Actions are serialized and checkpointed in `out/orbit_state.json`. If a process stops during an external action, the next run **stops** and asks for inspection rather than possibly posting a duplicate. It does not automatically log in to X again. A failed X action or missing tweet text stops the batch; it never invents a reply or marks an uncompleted action done. The group may reject repeated links, even though this schedule shares a link on all four 10 LIKE runs as requested.
 
-Before enabling jobs, set up Telegram interactively with `python3 tg_setup.py` (needs Telegram API ID/hash and phone confirmation). Then run `python3 orbit.py check`, and test each mode during its window with `--dry`. Chrome's Telegram login alone is insufficient for unattended launchd runs. Install `launchd/com.sinclair.orbit-*.plist` into `~/Library/LaunchAgents/` and load them only after the check and dry run pass. The Mac must be awake, logged in, and online.
+Before enabling jobs, set up Telegram interactively with `python3 tg_setup.py` (needs Telegram API ID/hash and phone confirmation). Then run `python3 orbit.py check`; it verifies both topics against Telegram. Test each mode during its window with `--dry`, then run `zsh install_orbit.sh` to install and load the three launchd jobs. Chrome's Telegram login alone is insufficient for unattended launchd runs. The Mac must be awake, logged in, and online.
 
 At **9:31 PM IST**, `com.sinclair.codex-draft` runs Codex to research **today's** topic, validate the draft and immediately publish it through twitterapi.io. Research can take a few minutes. The 10:31 PM and 11:31 PM retries skip dates already posted. It uses `CODEX_DRAFT.md` and the weekly plan in `content/PLAN.md`. No next-day 1 PM daily-post job remains.
 

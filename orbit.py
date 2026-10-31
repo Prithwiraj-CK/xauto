@@ -313,8 +313,21 @@ async def main_async(mode, dry):
     if mode == 'check':
         print('missing env:', ', '.join(missing) or 'none')
         print('Telegram session:', 'present' if session.exists() else 'missing')
-        print('X session:', 'present' if (OUT / 'x_session.json').exists() else 'missing')
-        return 1 if missing or not session.exists() else 0
+        x_session = (OUT / 'x_session.json').exists()
+        print('X session:', 'present' if x_session else 'missing')
+        if missing or not session.exists() or not x_session:
+            return 1
+        client = TelegramClient(str(OUT / 'telegram'), int(os.environ['TG_API_ID']), os.environ['TG_API_HASH'])
+        await client.connect()
+        try:
+            if not await client.is_user_authorized():
+                raise RuntimeError('Telegram session is not authorized')
+            for title in ('MEGA ENGAGE', '10 LIKE SCROLL'):
+                _, topic = await group_and_topic(client, title)
+                print(f'{title}: topic {topic.id}')
+        finally:
+            await client.disconnect()
+        return 0
     if missing or not session.exists():
         raise RuntimeError('Telegram setup needed: run python3 tg_setup.py interactively')
     client = TelegramClient(str(OUT / 'telegram'), int(os.environ['TG_API_ID']), os.environ['TG_API_HASH'])
