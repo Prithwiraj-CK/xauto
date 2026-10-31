@@ -7,7 +7,7 @@ log="$repo/out/codex_draft.log"
 lock="$repo/out/.codex-draft.lock"
 mkdir -p "$repo/out"
 
-target=$(/usr/bin/python3 -c 'from datetime import datetime,timedelta; from zoneinfo import ZoneInfo; print((datetime.now(ZoneInfo("Asia/Kolkata"))+timedelta(days=1)).date())')
+target=$(/usr/bin/python3 -c 'from datetime import datetime,timedelta; from zoneinfo import ZoneInfo; now=datetime.now(ZoneInfo("Asia/Kolkata")); print((now.date()+timedelta(days=0 if now.hour<13 else 1)).isoformat())')
 if /usr/bin/python3 - "$repo/out/draft_state.json" "$target" <<'PY'
 import json, sys
 try:
