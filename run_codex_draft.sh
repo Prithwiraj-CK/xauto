@@ -1,6 +1,9 @@
 #!/bin/zsh
 set -euo pipefail
 
+# launchd has a minimal PATH; the Codex CLI requires Homebrew Node.
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
 repo=/Users/prithiraj/sinclair-x-bot
 codex_bin=/opt/homebrew/bin/codex
 log="$repo/out/codex_draft.log"
