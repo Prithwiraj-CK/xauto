@@ -9,12 +9,18 @@ mkdir -p "$repo/out"
 
 target=$(/usr/bin/python3 -c 'from datetime import datetime,timedelta; from zoneinfo import ZoneInfo; now=datetime.now(ZoneInfo("Asia/Kolkata")); print((now.date()+timedelta(days=0 if now.hour<13 else 1)).isoformat())')
 if /usr/bin/python3 - "$repo/out/draft_state.json" "$target" <<'PY'
-import json, sys
+import hashlib, json, sys
 try:
     state = json.load(open(sys.argv[1]))
 except (OSError, ValueError):
     state = {}
-sys.exit(0 if state.get('drafted_for') == sys.argv[2] and not state.get('failed') else 1)
+valid = state.get('drafted_for') == sys.argv[2] and state.get('generator') == 'codex' and not state.get('failed')
+for name, filename in (('post_sha256', 'post.json'), ('drafts_sha256', 'drafts.json')):
+    try:
+        valid &= state.get(name) == hashlib.sha256(open(f'{sys.argv[1].rsplit("/", 1)[0]}/{filename}', 'rb').read()).hexdigest()
+    except OSError:
+        valid = False
+sys.exit(0 if valid else 1)
 PY
 then
     exit 0
