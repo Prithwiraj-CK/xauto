@@ -64,6 +64,17 @@ class OrbitTests(unittest.TestCase):
             action.assert_not_called()
             self.assertEqual(state['2026-11-01:mega:123:like'], 'done')
 
+    def test_generic_mega_reply_is_rejected_before_engagement(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(orbit, 'OUT', Path(temp)):
+            folder = Path(temp) / 'orbit' / '2026-11-01'
+            folder.mkdir(parents=True)
+            source = {'id': '123', 'url': 'https://x.com/a/status/123', 'author': 'a',
+                      'text': 'Meteora liquidity rose today'}
+            (folder / 'candidates.json').write_text(json.dumps([source]))
+            (folder / 'replies.json').write_text(json.dumps([{**source, 'reply': 'Great post, thanks for sharing'}]))
+            with self.assertRaises(RuntimeError):
+                orbit.draft_replies([{'id': '123', 'url': source['url']}], '2026-11-01', False)
+
 
 if __name__ == '__main__':
     unittest.main()

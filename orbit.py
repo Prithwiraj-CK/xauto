@@ -32,6 +32,9 @@ IST = ZoneInfo('Asia/Kolkata')
 GROUP = 'Engage-Orbit'
 TWEET = re.compile(r'https?://(?:www\.)?(?:x|twitter)\.com/[A-Za-z0-9_]+/status/(\d+)')
 SLOTS = {'likes-07': (7, 0), 'likes-12': (12, 0), 'likes-17': (17, 0), 'likes-22': (22, 0)}
+STOP_WORDS = {'about', 'after', 'again', 'could', 'from', 'have', 'just', 'more',
+              'that', 'their', 'there', 'these', 'this', 'what', 'when', 'where',
+              'which', 'with', 'would', 'your'}
 
 
 def now_ist():
@@ -168,11 +171,18 @@ def draft_replies(links, stamp, dry):
     by_id = {str(x.get('id')): x for x in drafts}
     if len(by_id) != len(rows):
         raise RuntimeError('MEGA replies must cover each source exactly once')
+    if len({x.get('reply', '').strip().lower() for x in drafts}) != len(drafts):
+        raise RuntimeError('MEGA replies contain duplicate text')
     for row in rows:
         reply = by_id[row['id']]
         words = re.findall(r"\b[\w']+\b", reply.get('reply', ''))
+        source_terms = {x.lower() for x in re.findall(r'\b[A-Za-z]{4,}\b', row['text'])} - STOP_WORDS
+        reply_terms = {x.lower() for x in re.findall(r'\b[A-Za-z]{4,}\b', reply.get('reply', ''))} - STOP_WORDS
+        source_numbers = set(re.findall(r'\b\d+(?:\.\d+)?\b', row['text']))
+        reply_numbers = set(re.findall(r'\b\d+(?:\.\d+)?\b', reply.get('reply', '')))
         if (reply.get('text') != row['text'] or reply.get('author') != row['author']
-                or len(words) < 4 or run_daily.lint_reply(reply.get('reply', ''))):
+                or len(words) < 4 or run_daily.lint_reply(reply.get('reply', ''))
+                or not (source_terms & reply_terms) or not reply_numbers <= source_numbers):
             raise RuntimeError(f"Reply validation failed for {row['id']}")
     return rows, drafts
 
