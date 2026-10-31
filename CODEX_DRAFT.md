@@ -1,4 +1,4 @@
-# Sinclair same-evening post
+# Sinclair 10 AM daily post
 
 Research and draft TODAY'S post for @SinClair_0000. The scheduler supplies the date, weekday topic and output path. It validates and publishes immediately after you finish, then commits and pushes a backup. Write only the requested post JSON. Do not publish to X, send Discord messages, commit, push, or change scripts. Reply sessions are separate; do not modify out/drafts.json or draft replies here.
 

@@ -25,14 +25,14 @@ class OrbitTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             orbit.like_slot(datetime(2026, 11, 1, 14, 0, tzinfo=orbit.IST))
 
-    def test_next_morning_uses_previous_evening_post(self):
+    def test_morning_mega_uses_same_day_post(self):
         history = {'2026-10-31': {'post_tweet_id': '123'},
                    '2026-11-01': {'post_tweet_id': '456'}}
         with patch.object(orbit.run_daily, 'read_state', return_value=history):
-            day, url = orbit.posted_tweet_before(datetime(2026, 11, 1, 11, 5, tzinfo=orbit.IST))
+            day, url = orbit.posted_tweet_before(datetime(2026, 11, 1, 7, 0, tzinfo=orbit.IST))
             self.assertEqual(day, '2026-10-31')
             self.assertTrue(url.endswith('/123'))
-            day, url = orbit.posted_tweet_before(datetime(2026, 11, 1, 22, 0, tzinfo=orbit.IST))
+            day, url = orbit.posted_tweet_before(datetime(2026, 11, 1, 11, 5, tzinfo=orbit.IST))
             self.assertEqual(day, '2026-11-01')
             self.assertTrue(url.endswith('/456'))
 

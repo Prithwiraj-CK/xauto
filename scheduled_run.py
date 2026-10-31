@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import time
 from zoneinfo import ZoneInfo
 
 import run_daily as rules
@@ -19,6 +20,9 @@ ROOT = Path(__file__).parent
 IST = ZoneInfo('Asia/Kolkata')
 SLOTS = ['solana-viral', 'hot-take', 'meteora', 'meteora', 'polymarket', 'hot-take', 'journey']
 REPLY_HOURS = (13, 15, 20, 23)
+DAILY_PREP = (9, 15)
+DAILY_POST = (10, 0)
+DAILY_DEADLINE = (10, 15)
 
 
 def now_ist():
@@ -27,8 +31,8 @@ def now_ist():
 
 def session(mode, now):
     if mode == 'daily':
-        # Do not publish yesterday's missed evening post on a morning wake.
-        return 'daily' if (now.hour, now.minute) >= (21, 31) else None
+        # Prepare before 10 AM, but never publish a missed post after the slot.
+        return 'daily' if DAILY_PREP <= (now.hour, now.minute) < DAILY_DEADLINE else None
     hours = [hour for hour in REPLY_HOURS if hour <= now.hour]
     return f'replies-{max(hours):02d}' if hours else None
 
@@ -137,6 +141,13 @@ def daily(day, folder):
             'post_sha256': hashlib.sha256((ROOT / 'out/post.json').read_bytes()).hexdigest(),
         })
     validate_post(read_json(ROOT / 'out/post.json'), day)
+    post_at = datetime.fromisoformat(day).replace(hour=DAILY_POST[0], minute=DAILY_POST[1], tzinfo=IST)
+    remaining = (post_at - now_ist()).total_seconds()
+    if remaining > 0:
+        time.sleep(remaining)
+    now = now_ist()
+    if now.date().isoformat() != day or (now.hour, now.minute) >= DAILY_DEADLINE:
+        raise RuntimeError('Daily draft missed the 10:00–10:15 AM IST posting window')
     checked([sys.executable, 'run_daily.py', '--post-only'])
     push_draft(day)
     save_json(folder / 'backed_up.json', {'done': True})

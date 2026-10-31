@@ -6,9 +6,9 @@
 
 | Job | Time | Work |
 |---|---|---|
-| MEGA submission | 11:05 AM, retries 11:15 and 11:25 | Share the previous evening's Sinclair tweet once in the MEGA ENGAGE topic. |
+| MEGA submission | 11:05 AM, retries 11:15 and 11:25 | Share today's 10 AM Sinclair tweet once in the MEGA ENGAGE topic. |
 | MEGA engagement | 11:35 AM, retries 11:50 and 12:15 | After the close notice, read that session's links, like and write a specific reply of at least four words to each post, then react to each Telegram message. |
-| 10 LIKE SCROLL | 7 AM, noon, 5 PM, 10 PM | Like the latest ten other people's links, react on their Telegram messages, share Sinclair's latest tweet, then react 👍 to that message. The 10 PM run waits for today's tweet and retries at 10:20 and 10:40. |
+| 10 LIKE SCROLL | 7 AM, noon, 5 PM, 10 PM | Like the latest ten other people's links, react on their Telegram messages, share Sinclair's tweet, then react 👍 to that message. The 7 AM cycle uses yesterday's tweet; later cycles require today's 10 AM tweet. The 10 PM run retries at 10:20 and 10:40. |
 
 Actions are serialized and checkpointed in `out/orbit_state.json`. If a process stops during an external action, the next run **stops** and asks for inspection rather than possibly posting a duplicate. It does not automatically log in to X again. A failed X action or missing tweet text stops the batch; it never invents a reply or marks an uncompleted action done. The group may reject repeated links, even though this schedule shares a link on all four 10 LIKE runs as requested.
 
@@ -16,13 +16,13 @@ The noon 10 LIKE run can start late when the 11 AM MEGA batch is still active. I
 
 Before enabling jobs, set up Telegram interactively with `python3 tg_setup.py` (needs Telegram API ID/hash and phone confirmation). Then run `python3 orbit.py check`; it verifies both topics against Telegram. Test each mode during its window with `--dry`, then run `zsh install_orbit.sh` to install and load the three launchd jobs. Chrome's Telegram login alone is insufficient for unattended launchd runs. The Mac must be awake, logged in, and online.
 
-At **9:31 PM IST**, `com.sinclair.codex-draft` runs Codex to research **today's** topic, validate the draft and immediately publish it through twitterapi.io. Research can take a few minutes. The 10:31 PM and 11:31 PM retries skip dates already posted. It uses `CODEX_DRAFT.md` and the weekly plan in `content/PLAN.md`. No next-day 1 PM daily-post job remains.
+At **9:15 AM IST**, `com.sinclair.codex-draft` runs Codex to research **today's** topic and validate the draft. It publishes at **10:00 AM IST** through twitterapi.io, one hour before the selected 11 AM MEGA ENGAGE session. The 9:45 and 10:00 AM retries skip dates already posted; a draft not ready before 10:15 AM is not published for that session. It uses `CODEX_DRAFT.md` and the weekly plan in `content/PLAN.md`.
 
-Separate Codex reply sessions run at **1 PM, 3 PM, 8 PM and 11 PM IST** (`com.sinclair.codex-replies`). They follow `CODEX_REPLIES.md` and `REPLY_GUIDE.md`: up to 10 replies at 1 PM and up to 3 at each other session; fewer or zero are fine. There is no extra five-reply batch attached to the evening post. Per-session drafts are stored under `out/scheduled/YYYY-MM-DD/replies-HH/`.
+Separate Codex reply sessions run at **1 PM, 3 PM, 8 PM and 11 PM IST** (`com.sinclair.codex-replies`). They follow `CODEX_REPLIES.md` and `REPLY_GUIDE.md`: up to 10 replies at 1 PM and up to 3 at each other session; fewer or zero are fine. There is no extra five-reply batch attached to the daily post. Per-session drafts are stored under `out/scheduled/YYYY-MM-DD/replies-HH/`.
 
 Replies go into a durable shared SQLite queue. `com.sinclair.reply-worker` checks it every five minutes, sends at random 30–60 minute intervals, prevents duplicate source IDs, and resumes queued work after restart. Failed items are retained as failed for inspection. The old Claude schedules remain paused. Discord receives summaries only.
 
-The Mac must be awake, logged in and online for punctual execution. On wake, drafting uses the current IST date and latest eligible session; it does not publish yesterday's missed evening post in the morning.
+The Mac must be awake, logged in and online for punctual execution. On wake, drafting uses the current IST date and only publishes during the 10:00–10:15 AM window.
 
 | Day | Research and post topic |
 |---|---|

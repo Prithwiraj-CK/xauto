@@ -81,8 +81,8 @@ def posted_tweet_before(when):
         item = history[day]
         if not item.get('post_tweet_id') or day > when.date().isoformat():
             continue
-        # Today's 7 AM/noon/5 PM jobs use the previous evening's post.
-        if day == when.date().isoformat() and when.hour < 22:
+        # The 7 AM cycle uses yesterday's tweet; later cycles use today's 10 AM post.
+        if day == when.date().isoformat() and when.hour < 10:
             continue
         return day, f"https://x.com/{os.environ.get('X_BOT_USERNAME', 'SinClair_0000')}/status/{item['post_tweet_id']}"
     raise RuntimeError('No successful Sinclair daily post is available for this slot')
@@ -231,8 +231,8 @@ async def execute(client, mode, when, dry):
     if mode == 'mega-post':
         chat, topic = await group_and_topic(client, 'MEGA ENGAGE')
         source_day, url = posted_tweet_before(when)
-        if source_day != (when.date() - timedelta(days=1)).isoformat():
-            raise RuntimeError('MEGA 11 AM requires yesterday evening’s successful tweet')
+        if source_day != today:
+            raise RuntimeError('MEGA 11 AM requires today’s successful 10 AM tweet')
         state = load_state()
         key = f'{today}:mega:posted'
         if dry:
@@ -287,8 +287,9 @@ async def execute(client, mode, when, dry):
     slot = like_slot(when)
     key = f'{today}:{slot}'
     source_day, url = posted_tweet_before(when)
-    if slot == 'likes-22' and source_day != today:
-        raise RuntimeError('10 PM slot is waiting for today’s successful Sinclair tweet')
+    expected_day = (when.date() - timedelta(days=1)).isoformat() if slot == 'likes-07' else today
+    if source_day != expected_day:
+        raise RuntimeError(f'{slot} requires a successful Sinclair tweet from {expected_day}')
     msgs = await messages_in_topic(client, chat, topic, 80)
     own_handle = os.environ.get('X_BOT_USERNAME', 'SinClair_0000').lower()
     links = [x for x in tweet_links(msgs)

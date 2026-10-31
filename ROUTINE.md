@@ -9,4 +9,4 @@
 5. The separate reply worker publishes at random 30–60 minute intervals. Duplicate source IDs are skipped; later sessions append safely.
 6. Send a concise Discord summary. No tap cards or manual posting step.
 
-The evening daily tweet is independent and follows `CODEX_DRAFT.md` and `content/PLAN.md`.
+The 10 AM daily tweet is independent and follows `CODEX_DRAFT.md` and `content/PLAN.md`.

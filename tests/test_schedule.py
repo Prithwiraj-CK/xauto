@@ -14,8 +14,9 @@ import run_daily as daily
 
 
 class ScheduleTests(unittest.TestCase):
-    def test_same_evening_and_wake_boundaries(self):
-        for hour, minute, expected in [(9, 0, None), (21, 30, None), (21, 31, 'daily'), (23, 31, 'daily')]:
+    def test_morning_post_window_and_wake_boundaries(self):
+        for hour, minute, expected in [(9, 0, None), (9, 15, 'daily'), (10, 0, 'daily'),
+                                       (10, 14, 'daily'), (10, 15, None), (21, 31, None)]:
             now = datetime(2026, 11, 1, hour, minute, tzinfo=schedule.IST)
             self.assertEqual(schedule.session('daily', now), expected)
         for hour, expected in [(12, None), (13, 'replies-13'), (16, 'replies-15'), (20, 'replies-20'), (23, 'replies-23')]:
@@ -80,7 +81,7 @@ class ScheduleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp); folder = root / 'out/scheduled/2026-11-01/daily'; folder.mkdir(parents=True)
             events = []
-            now = datetime(2026, 11, 1, 21, 35, tzinfo=schedule.IST)
+            now = datetime(2026, 11, 1, 10, 5, tzinfo=schedule.IST)
             with patch.object(schedule, 'ROOT', root), patch.object(daily, 'read_state', return_value={}), \
                  patch.object(daily, 'codex_draft_valid', return_value=False), patch.object(schedule, 'now_ist', return_value=now), \
                  patch.object(schedule, 'generate', return_value={'type':'journey', 'text':'what are you watching next week?'}), \
