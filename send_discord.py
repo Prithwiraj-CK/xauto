@@ -90,28 +90,14 @@ def main():
         send({"content": msg})
         print(msg)
         return
-    # Append to any pending queue (don't clobber in-flight)
-    existing = json.loads(PENDING.read_text()) if PENDING.exists() else []
-    existing_ids = {d.get("id") for d in existing}
-    added = [d for d in kept if d.get("id") not in existing_ids]
-    PENDING.parent.mkdir(exist_ok=True)
-    PENDING.write_text(json.dumps(existing + added, indent=2))
-    # Refuse to spawn a second runner if one is already working the queue
-    if any("run_replies.py" in (p or "") for p in subprocess.run(
-            ["pgrep", "-fl", "run_replies.py"], capture_output=True, text=True).stdout.splitlines()):
-        send({"content": f"ℹ️ Added **{len(added)}** to the live reply queue (runner already up): {authors}"})
-        print("runner already running, appended to queue")
-        return
-    runner = ROOT / "run_replies.py"
-    pid = subprocess.Popen([sys.executable, str(runner)],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                           start_new_session=True, cwd=str(ROOT)).pid
-    msg = (f"✅ Queued **{len(added)}** repl{'ies' if len(added) != 1 else 'y'} to auto-post "
-           f"(30–60 min random gaps, pid {pid}): {authors}")
+    from reply_queue import enqueue
+    count = enqueue(kept)
+    msg = f"Queued {count} new replies with random 30–60 minute gaps: {authors}"
     if dropped:
-        msg += f"\n⛔ Dropped {len(dropped)}: " + "; ".join(f"@{a} ({w})" for a, w in dropped)
+        msg += f". Dropped {len(dropped)} by lint."
     send({"content": msg})
     print(msg)
+
 
 
 if __name__ == "__main__":

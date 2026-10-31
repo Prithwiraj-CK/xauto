@@ -1,4 +1,4 @@
-"""Daily poster: posts out/post.json + schedules replies from out/drafts.json. Idempotent per day. Runs under cron.
+"""Daily poster: posts out/post.json + schedules replies from out/drafts.json. Idempotent per day. Called by the Codex evening scheduler.
 
   python3 run_daily.py             -> post the daily draft and queue replies
   python3 run_daily.py --dry       -> show what it would do, change nothing
@@ -13,10 +13,10 @@ Inputs:
 
 Guards (hard rules):
   - Lints post text + every reply for AI tells; refuses to post anything that fails
-  - Requires either quote_tweet_url OR at least one proof image on the daily post (hard rule: never post bare)
+  - Solana, Meteora and Polymarket posts require source proof; hot-take and journey may be plain text
   - Skips if today's post already posted (stamp in out/run_daily_state.json)
-  - Stops the reply chain on the first X failure, logs which ones didn't post
-  - Random 30-60 min gaps between replies, each as its own run
+  - Shared durable reply queue retains work across sessions and worker restarts
+  - Random 30-60 min gaps between replies, maintained by run_replies.py
 
 Discord webhook only gets $ spent summaries.
 Env: TWITTERAPI_KEY, DISCORD_WEBHOOK_URL, X_BOT_* (loaded from .env automatically)
@@ -32,6 +32,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).parent
 STATE = ROOT / "out" / "run_daily_state.json"
@@ -88,17 +89,20 @@ def write_state(s):
     STATE.write_text(json.dumps(s, indent=2))
 
 
-def today_utc_str():
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+def today_ist_str():
+    return datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d")
 
 
-def codex_draft_valid(today):
+def codex_draft_valid(today, include_replies=True):
     """Require the exact draft files validated by the Codex evening job."""
     try:
         stamp = json.loads((ROOT / "out" / "draft_state.json").read_text())
         if stamp.get("drafted_for") != today or stamp.get("generator") != "codex" or stamp.get("failed"):
             return False
-        for name, path in (("post_sha256", POST), ("drafts_sha256", DRAFTS)):
+        files = [("post_sha256", POST)]
+        if include_replies:
+            files.append(("drafts_sha256", DRAFTS))
+        for name, path in files:
             if stamp.get(name) != hashlib.sha256(path.read_bytes()).hexdigest():
                 return False
         return True
@@ -245,14 +249,10 @@ def queue_replies(dry):
             log(f"[dry] would reply @{d['author']}: {d['reply']}")
         return len(cleaned)
 
-    # Launch a persistent background Python that sleeps + posts with random 30-60 min gaps
-    scratch = ROOT / "out" / "pending_replies.json"
-    scratch.write_text(json.dumps(cleaned, indent=2))
-    runner = ROOT / "run_replies.py"
-    pid = subprocess.Popen([sys.executable, str(runner)], stdout=subprocess.DEVNULL,
-                           stderr=subprocess.DEVNULL, start_new_session=True).pid
-    log(f"backgrounded {len(cleaned)} replies, pid {pid}")
-    return len(cleaned)
+    from reply_queue import enqueue
+    n = enqueue(cleaned)
+    log(f"added {n} replies to the shared queue; scheduled worker will send them")
+    return n
 
 
 def main():
@@ -266,27 +266,34 @@ def main():
 
     log(f"run_daily start (dry={args.dry}, post_only={args.post_only}, reply_only={args.reply_only})")
     state = read_state()
-    today = today_utc_str()
-    if state.get(today) and not args.force and not args.dry:
+    today = today_ist_str()
+    if state.get(today, {}).get("post_tweet_id") and not args.reply_only and not args.force and not args.dry:
         log(f"already ran for {today}: {state[today]}. Use --force to re-run.")
         return
 
-    if not args.dry and not args.reply_only and today >= "2026-11-01" and not codex_draft_valid(today):
+    if not args.dry and not args.reply_only and not codex_draft_valid(today, include_replies=not args.post_only):
         log("Codex draft missing, stale, or changed after validation; refusing to post")
         webhook("no post today: Codex draft missing or changed after validation (see out/run_daily.log)")
-        return
+        return 1
 
-    spend_start()
+    if not args.dry:
+        spend_start()
     done = {}
     if not args.reply_only:
         tid = post_daily(args.dry)
+        if not tid:
+            if not args.dry:
+                spend_end("failed daily post")
+                webhook("Daily post failed; no success stamp written. See out/run_daily.log.")
+            return 1
         done["post_tweet_id"] = tid
+        done["post_type"] = json.loads(POST.read_text()).get("type") if POST.exists() else None
     if not args.post_only:
         n = queue_replies(args.dry)
         done["replies_queued"] = n
 
     if not args.dry:
-        state[today] = done
+        state[today] = {**state.get(today, {}), **done}
         write_state(state)
         spend_end("daily run (tweet only)")
 
@@ -304,4 +311,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)

@@ -1,8 +1,25 @@
 # @SinClair_0000 X bot
 
-Codex drafts tomorrow's post and five replies locally at 9:31 PM IST, with 10:31 PM and 11:31 PM retries. The job is `com.sinclair.codex-draft` and follows `CODEX_DRAFT.md`. It validates and pushes `out/post.json`, `out/drafts.json`, and `out/draft_state.json`. The Mac must be awake and online for a local draft run; launchd can catch up on wake.
+At **9:31 PM IST**, `com.sinclair.codex-draft` runs Codex to research **today's** topic, validate the draft and immediately publish it through twitterapi.io. Research can take a few minutes. The 10:31 PM and 11:31 PM retries skip dates already posted. It uses `CODEX_DRAFT.md` and the weekly plan in `content/PLAN.md`. No next-day 1 PM daily-post job remains.
 
-At 1 PM IST, `com.sinclair.x-daily` runs `run_daily.py` locally. It checks the Codex draft date and file digests, posts the tweet through twitterapi.io, then starts `run_replies.py` for five replies spaced by random 30–60 minute gaps. Discord receives summaries only. The old Claude drafting schedules are paused.
+Separate Codex reply sessions run at **1 PM, 3 PM, 8 PM and 11 PM IST** (`com.sinclair.codex-replies`). They follow `CODEX_REPLIES.md` and `REPLY_GUIDE.md`: up to 10 replies at 1 PM and up to 3 at each other session; fewer or zero are fine. There is no extra five-reply batch attached to the evening post. Per-session drafts are stored under `out/scheduled/YYYY-MM-DD/replies-HH/`.
+
+Replies go into a durable shared SQLite queue. `com.sinclair.reply-worker` checks it every five minutes, sends at random 30–60 minute intervals, prevents duplicate source IDs, and resumes queued work after restart. Failed items are retained as failed for inspection. The old Claude schedules remain paused. Discord receives summaries only.
+
+The Mac must be awake, logged in and online for punctual execution. On wake, drafting uses the current IST date and latest eligible session; it does not publish yesterday's missed evening post in the morning.
+
+| Day | Research and post topic |
+|---|---|
+| Monday | Viral Solana story and your take |
+| Tuesday | Hot take / debate |
+| Wednesday | Meteora research, teaching or news |
+| Thursday | A different viral Solana story |
+| Friday | Polymarket odds and news |
+| Saturday | A different hot take / debate |
+| Sunday | Personal lesson, question or next-week watchlist |
+
+The documented breaking-news override requires a source URL and reason in `schedule_override`; the usual slot is enforced otherwise. First-person experiences must come from `content/journal.md`.
+
 
 ## Files
 
@@ -85,7 +102,7 @@ and webhook scripts run separately and are not fed by this reader.
 
 ## Local environment
 
-Keep `TWITTERAPI_KEY`, `DISCORD_WEBHOOK_URL`, and `X_BOT_USERNAME` in the gitignored `.env`. The Codex CLI uses the local ChatGPT sign-in. `out/codex_draft.log` records the draft run and `out/run_daily.log` and `out/run_replies.log` record posting. The draft job commits and pushes only after validation; if the Codex draft is missing or later changed, the 1 PM poster refuses to use it.
+Keep `TWITTERAPI_KEY`, `DISCORD_WEBHOOK_URL`, and `X_BOT_USERNAME` in the gitignored `.env`. The Codex CLI uses the local ChatGPT sign-in. `out/codex_draft.log` records the draft run and `out/run_daily.log` and `out/run_replies.log` record posting. The daily job validates and stamps the draft, publishes it, then commits and pushes the draft backup. Missing, stale or modified drafts are refused. A backup failure never causes a second post. Reply drafts are local and do not change the daily post files.
 
 ## Growth playbook
 
