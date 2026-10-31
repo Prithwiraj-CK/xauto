@@ -21,6 +21,9 @@ class OrbitTests(unittest.TestCase):
             orbit.confirm_slot('mega-post', datetime(2026, 11, 1, 10, 59, tzinfo=orbit.IST))
         with self.assertRaises(RuntimeError):
             orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 11, 30, tzinfo=orbit.IST))
+        self.assertEqual(orbit.like_slot(datetime(2026, 11, 1, 13, 10, tzinfo=orbit.IST)), 'likes-12')
+        with self.assertRaises(RuntimeError):
+            orbit.like_slot(datetime(2026, 11, 1, 14, 0, tzinfo=orbit.IST))
 
     def test_next_morning_uses_previous_evening_post(self):
         history = {'2026-10-31': {'post_tweet_id': '123'},

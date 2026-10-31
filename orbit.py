@@ -95,9 +95,16 @@ def confirm_slot(mode, when):
     if mode == 'mega-engage' and not (hour == 11 and minute >= 35 or hour == 12 and minute < 30):
         raise RuntimeError('MEGA engagement only runs after the 11 AM session closes')
     if mode == 'likes':
-        if not any((hour, minute) >= start and (hour, minute) < (start[0], start[1] + 45)
-                   for start in SLOTS.values()):
-            raise RuntimeError('Outside a configured 10 LIKE SCROLL slot')
+        like_slot(when)
+
+
+def like_slot(when):
+    minute_of_day = when.hour * 60 + when.minute
+    candidates = [(name, start[0] * 60 + start[1]) for name, start in SLOTS.items()]
+    active = [(name, start) for name, start in candidates if 0 <= minute_of_day - start < 120]
+    if not active:
+        raise RuntimeError('Outside a configured 10 LIKE SCROLL slot')
+    return max(active, key=lambda item: item[1])[0]
 
 
 async def group_and_topic(client, title):
@@ -277,14 +284,15 @@ async def execute(client, mode, when, dry):
         return
 
     chat, topic = await group_and_topic(client, '10 LIKE SCROLL (10d mute)')
-    slot = next(name for name, start in SLOTS.items() if start[0] == when.hour)
+    slot = like_slot(when)
     key = f'{today}:{slot}'
     source_day, url = posted_tweet_before(when)
-    if when.hour == 22 and source_day != today:
+    if slot == 'likes-22' and source_day != today:
         raise RuntimeError('10 PM slot is waiting for today’s successful Sinclair tweet')
     msgs = await messages_in_topic(client, chat, topic, 80)
-    own_id = TWEET.search(url).group(1)
-    links = [x for x in tweet_links(msgs) if x['id'] != own_id][:10]
+    own_handle = os.environ.get('X_BOT_USERNAME', 'SinClair_0000').lower()
+    links = [x for x in tweet_links(msgs)
+             if x['url'].split('/')[3].lower() != own_handle][:10]
     if len(links) != 10:
         raise RuntimeError(f'Only {len(links)} recent 10 LIKE links found; need 10')
     print(f'{slot}: {len(links)} links; share {url}')
