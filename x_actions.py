@@ -8,14 +8,15 @@
   python3 x_actions.py qt <tweet_url> "text"       -> quote-tweet the given tweet with text ($0.0006)
   python3 x_actions.py rt <tweet_id>               -> retweet ($0.0006)
 
-Safety rails: one login only (refuses to log in again while a cookie exists, unless --force), and a minimum gap
-between actions (X_BOT_MIN_GAP_SEC, default 300). The same proxy is sent on every call. Stops on the first error
+Safety rails: one login only (refuses to log in again while a cookie exists, unless --force), and a cross-job minimum gap
+between actions (X_BOT_MIN_GAP_SEC, default 300; waits while locked). The same proxy is sent on every call. Stops on the first error
 from X: check the account by hand before retrying.
 
 Env (.env, gitignored): TWITTERAPI_KEY, X_BOT_USERNAME, X_BOT_EMAIL, X_BOT_PASSWORD, X_BOT_TOTP_SECRET (base32 seed),
 X_BOT_PROXY (http://user:pass@ip:port)
 """
 import json
+import fcntl
 import mimetypes
 import os
 import sys
@@ -28,6 +29,7 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 SESSION = ROOT / "out" / "x_session.json"
 LOG = ROOT / "out" / "x_actions_log.json"
+LOCK = ROOT / "out" / ".x-actions.lock"
 API = "https://api.twitterapi.io/twitter"
 
 
@@ -76,11 +78,13 @@ def todays_actions():
 
 
 def guard():
-    """Minimum gap between actions, so a stray loop can't burst."""
+    """Wait for the configured minimum gap while holding the cross-job lock."""
     recent = todays_actions()
-    gap = int(os.getenv("X_BOT_MIN_GAP_SEC", 300))
-    if recent and time.time() - max(recent) < gap:
-        sys.exit(f"too soon: wait {int(gap - (time.time() - max(recent)))}s since the last action")
+    gap = max(10, int(os.getenv("X_BOT_MIN_GAP_SEC", 300)))
+    if recent:
+        remaining = gap - (time.time() - max(recent))
+        if remaining > 0:
+            time.sleep(remaining + 1)
 
 
 def record():
@@ -108,11 +112,14 @@ def cmd_login(force):
 
 
 def act(path, body):
-    guard()
-    res = post(path, {**body, "login_cookies": cookies(), "proxy": need("X_BOT_PROXY")})
-    if res.get("status") != "success":
-        sys.exit(f"stopped, X said: {res.get('message') or res}. Check the account by hand before retrying.")
-    record()
+    LOCK.parent.mkdir(exist_ok=True)
+    with LOCK.open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        guard()
+        res = post(path, {**body, "login_cookies": cookies(), "proxy": need("X_BOT_PROXY")})
+        if res.get("status") != "success":
+            sys.exit(f"stopped, X said: {res.get('message') or res}. Check the account by hand before retrying.")
+        record()
     print("ok", {k: v for k, v in res.items() if k != "status"})
     return res
 
