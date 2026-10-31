@@ -12,14 +12,14 @@ The account is a Solana / DeFi voice with an LP edge, not only Meteora.
 |---|---|---|
 | Mon | `solana-viral` | the most viral Solana thing right now (`out/trends.json` → `solana-viral`, `community`, `solana-meta`) + my take on it |
 | Tue | `hot-take` | a controversy / debate post (rules below) |
-| Wed | `meteora` | the one Meteora post of the week: pick the strongest of pool research (+ chart), a teach post, or Meteora news |
-| Thu | `solana-viral` | the next viral Solana story (a different one than Monday) + my take |
+| Wed | `meteora` | pick the strongest of pool research (+ chart), a teach post, or Meteora news |
+| Thu | `meteora` | a second Meteora post: pool research (+ chart), a teach post, or Meteora news, using a different topic or angle from Wednesday |
 | Fri | `polymarket` | a market people are talking about (`out/trends.json` → `polymarket`): what the odds say, why the crowd might be wrong or right |
 | Sat | `hot-take` | a second controversy / debate post, on a different target than Tuesday |
 | Sun | `journey` | light and personal: a lesson, a question, what I'm watching next week. Short |
 
 **Override:** if something huge breaks (an official Meteora post with 200+ likes, MET or SOL moving 20%+ in a day,
-a market-wide event), cover it that day instead and shift the rest. Never the same type two days running.
+a market-wide event), cover it that day instead and shift the rest. Overrides must not repeat the previous day’s type. The scheduled Wednesday and Thursday Meteora posts are intentional; use different topics or angles.
 
 ### `hot-take` rules (spicy, never reckless)
 - Pick a fight with an **idea, product, practice or public statement**: a protocol design, a launchpad meta, KOL

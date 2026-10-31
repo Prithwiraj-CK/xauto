@@ -17,7 +17,7 @@ import reply_queue
 
 ROOT = Path(__file__).parent
 IST = ZoneInfo('Asia/Kolkata')
-SLOTS = ['solana-viral', 'hot-take', 'meteora', 'solana-viral', 'polymarket', 'hot-take', 'journey']
+SLOTS = ['solana-viral', 'hot-take', 'meteora', 'meteora', 'polymarket', 'hot-take', 'journey']
 REPLY_HOURS = (13, 15, 20, 23)
 
 

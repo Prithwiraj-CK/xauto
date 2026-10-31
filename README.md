@@ -13,7 +13,7 @@ The Mac must be awake, logged in and online for punctual execution. On wake, dra
 | Monday | Viral Solana story and your take |
 | Tuesday | Hot take / debate |
 | Wednesday | Meteora research, teaching or news |
-| Thursday | A different viral Solana story |
+| Thursday | Another Meteora topic, different from Wednesday |
 | Friday | Polymarket odds and news |
 | Saturday | A different hot take / debate |
 | Sunday | Personal lesson, question or next-week watchlist |

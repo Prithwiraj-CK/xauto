@@ -4,7 +4,7 @@
 
 Codex follows `CODEX_DRAFT.md` and `content/PLAN.md`. It may refresh `history.py`, `trends.py`, and `style.py`, within the $0.10 total twitterapi.io research cap.
 
-On Wednesday, if choosing a Meteora pool research post:
+On Wednesday or Thursday, if choosing a Meteora pool research post:
 1. Run `python3 research.py scan` and inspect `out/pools.json`.
 2. Choose a pool not covered recently; run `python3 research.py chart <address>`.
 3. Use verified numbers from `out/chart_pool.json` and the authentic chart. Frame it as research, not a call to buy. Skip danger-rated pools for promotional research.

@@ -10,7 +10,7 @@ Use TODAY'S date in Asia/Kolkata, exactly as supplied by the scheduler:
 - Monday: solana-viral, the strongest current Solana story and your take.
 - Tuesday: hot-take, an evidence-grounded public debate.
 - Wednesday: meteora, the best pool research, teaching point or news. For pool research follow `DAILY_POST.md` research instructions and verify the chart's numbers.
-- Thursday: solana-viral, a different story from Monday.
+- Thursday: meteora, a different topic or angle from Wednesday: pool research, a teaching point, or Meteora news. Follow `DAILY_POST.md` for pool research.
 - Friday: polymarket, odds versus the news, never betting advice.
 - Saturday: hot-take, a different target from Tuesday.
 - Sunday: journey, a real lesson or detail from the journal, or a short question about next week.
