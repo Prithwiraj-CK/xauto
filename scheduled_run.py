@@ -111,14 +111,20 @@ def generate(prompt_file, output, context):
 
 def push_draft(day):
     # Publishing is complete before this backup step; push failures cannot trigger a second post.
-    checked(['git', 'add', 'out/post.json', 'out/draft_state.json'])
+    checked(['git', 'add', '-f', '--', 'out/post.json', 'out/draft_state.json'])
     diff = subprocess.run(['git', 'diff', '--cached', '--quiet', '--', 'out/post.json', 'out/draft_state.json'], cwd=ROOT)
     if diff.returncode == 1:
         checked(['git', '-c', 'user.name=Prithwiraj CK', '-c', 'user.email=prithwirajck2@gmail.com',
                  'commit', '--only', '-m', f'Codex daily post for {day}', '--', 'out/post.json', 'out/draft_state.json'])
     elif diff.returncode:
         raise RuntimeError('Could not inspect draft changes')
-    checked(['git', 'push', 'origin', 'main'])
+    checked(['git', 'push', 'origin', 'HEAD'])
+
+
+def scheduled_post(day):
+    """An exact, date-specific user-requested post takes priority over research."""
+    path = ROOT / 'content' / 'scheduled_posts' / f'{day}.json'
+    return read_json(path) if path.exists() else None
 
 
 def daily(day, folder):
@@ -129,7 +135,16 @@ def daily(day, folder):
             push_draft(day)
             save_json(folder / 'backed_up.json', {'done': True})
         return
-    if not rules.codex_draft_valid(day, include_replies=False):
+    pinned = scheduled_post(day)
+    if pinned is not None:
+        validate_post(pinned, day)
+        if not rules.codex_draft_valid(day, include_replies=False) or read_json(ROOT / 'out/post.json') != pinned:
+            save_json(ROOT / 'out/post.json', pinned)
+            save_json(ROOT / 'out/draft_state.json', {
+                'drafted_for': day, 'at': now_ist().isoformat(), 'generator': 'codex',
+                'post_sha256': hashlib.sha256((ROOT / 'out/post.json').read_bytes()).hexdigest(),
+            })
+    elif not rules.codex_draft_valid(day, include_replies=False):
         output = folder / 'post.json'
         post = generate('CODEX_DRAFT.md', output, f'Target date: {day} (IST), TODAY. Required weekday topic: {SLOTS[datetime.fromisoformat(day).weekday()]}.')
         validate_post(post, day)

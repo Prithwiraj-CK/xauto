@@ -77,6 +77,25 @@ class ScheduleTests(unittest.TestCase):
                 schedule.daily('2026-11-01', folder)
                 generate.assert_not_called(); checked.assert_not_called()
 
+    def test_date_specific_post_takes_priority_over_weekday_generation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            folder = root / 'out/scheduled/2026-11-02/daily'
+            folder.mkdir(parents=True)
+            pinned = schedule.scheduled_post('2026-11-02')
+            (root / 'content/scheduled_posts').mkdir(parents=True)
+            (root / 'content/scheduled_posts/2026-11-02.json').write_text(json.dumps(pinned))
+            now = datetime(2026, 11, 2, 10, 0, tzinfo=schedule.IST)
+            with patch.object(schedule, 'ROOT', root), patch.object(daily, 'read_state', return_value={}), \
+                 patch.object(daily, 'codex_draft_valid', return_value=False), \
+                 patch.object(schedule, 'now_ist', return_value=now), \
+                 patch.object(schedule, 'generate') as generate, patch.object(schedule, 'checked') as checked, \
+                 patch.object(schedule, 'push_draft'):
+                schedule.daily('2026-11-02', folder)
+                generate.assert_not_called()
+                checked.assert_called_once_with([sys.executable, 'run_daily.py', '--post-only'])
+                self.assertEqual(json.loads((root / 'out/post.json').read_text()), pinned)
+
     def test_same_day_draft_publishes_before_backup(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp); folder = root / 'out/scheduled/2026-11-01/daily'; folder.mkdir(parents=True)
