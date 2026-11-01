@@ -8,7 +8,7 @@
 |---|---|---|
 | MEGA submission | 11:05 AM, retries 11:15 and 11:25 | Share today's 10 AM Sinclair tweet once in the MEGA ENGAGE topic. |
 | MEGA engagement | 11:35 AM, retries 11:50 and 12:15 | After the close notice, read that session's links, like and write a specific reply of at least four words to each post, then react to each Telegram message. |
-| 10 LIKE SCROLL | 7 AM, noon, 1 PM, 5 PM, 10 PM | Like the latest ten other people's links, react on their Telegram messages, share Sinclair's tweet, then react 👍 to that message. The 7 AM cycle uses yesterday's tweet; later cycles require today's 10 AM tweet. The 10 PM run retries at 10:20 and 10:40. |
+| 10 LIKE SCROLL | 7 AM, noon, 1 PM, 5 PM, 10 PM | Like the latest ten other people's links, react on their Telegram messages, then share Sinclair's tweet. The 7 AM cycle uses yesterday's tweet; later cycles require today's 10 AM tweet. The 10 PM run retries at 10:20 and 10:40. |
 
 Actions are serialized and checkpointed in `out/orbit_state.json`. If a process stops during an external action, the next run **stops** and asks for inspection rather than possibly posting a duplicate. It does not automatically log in to X again. A failed X action or missing tweet text stops the batch; it never invents a reply or marks an uncompleted action done. The group may reject repeated links, even though this schedule shares a link on all four 10 LIKE runs as requested.
 

@@ -335,9 +335,8 @@ async def execute(client, mode, when, dry):
         raise RuntimeError('Uncertain 10 LIKE post; inspect before retry')
     if state.get(post_key) != 'done':
         transition(state, post_key, 'pending')
-        sent = await client.send_message(chat, url, reply_to=topic.id, link_preview=False)
+        await client.send_message(chat, url, reply_to=topic.id, link_preview=False)
         transition(state, post_key, 'done')
-        await telegram_react(client, chat, sent.id, '👍')
     transition(state, f'{key}:complete', 'done')
 
 
