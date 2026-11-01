@@ -10,10 +10,16 @@ mkdir -p "$target"
 for name in mega-post mega-engage likes; do
   label="com.sinclair.orbit-${name}"
   source="$repo/launchd/${label}.plist"
+  installed="$target/${label}.plist"
   /usr/bin/plutil -lint "$source"
-  cp "$source" "$target/${label}.plist"
+  if [[ ! -f "$installed" ]] || ! cmp -s "$source" "$installed"; then
+    if launchctl print "gui/$(id -u)/${label}" >/dev/null 2>&1; then
+      launchctl bootout "gui/$(id -u)/${label}"
+    fi
+    cp "$source" "$installed"
+  fi
   if ! launchctl print "gui/$(id -u)/${label}" >/dev/null 2>&1; then
-    launchctl bootstrap "gui/$(id -u)" "$target/${label}.plist"
+    launchctl bootstrap "gui/$(id -u)" "$installed"
   fi
 done
 echo 'Engage-Orbit jobs installed and loaded.'

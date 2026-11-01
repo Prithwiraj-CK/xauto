@@ -97,10 +97,10 @@ def posted_tweet_before(when):
 
 def confirm_slot(mode, when):
     hour, minute = when.hour, when.minute
-    if mode == 'mega-post' and not (hour == 11 and 0 <= minute < 30):
-        raise RuntimeError('MEGA post only runs in the 11:00–11:30 AM IST slot')
-    if mode == 'mega-engage' and not (hour == 11 and minute >= 35 or hour == 12 and minute < 30):
-        raise RuntimeError('MEGA engagement only runs after the 11 AM session closes')
+    if mode == 'mega-post' and not (hour == 11 and 5 <= minute < 30):
+        raise RuntimeError('MEGA post only runs in the 11:05–11:30 AM IST slot')
+    if mode == 'mega-engage' and not (hour == 11 and minute >= 35 or 12 <= hour < 14 or hour == 14 and minute < 25):
+        raise RuntimeError('MEGA engagement only runs after the 11 AM session closes, until 2:25 PM IST')
     if mode == 'likes':
         like_slot(when)
 
@@ -112,6 +112,30 @@ def like_slot(when):
     if not active:
         raise RuntimeError('Outside a configured 10 LIKE SCROLL slot')
     return max(active, key=lambda item: item[1])[0]
+
+
+def due_like_slots(when, state):
+    minute = when.hour * 60 + when.minute
+    return [name for name, (hour, start_minute) in SLOTS.items()
+            if 0 <= minute - (hour * 60 + start_minute) < 120
+            and state.get(f'{when.date().isoformat()}:{name}:complete') != 'done']
+
+
+def notify_failure(mode, error):
+    """Alert on a new failure, then at most once every 30 minutes while it persists."""
+    path = OUT / 'orbit_alerts.json'
+    try:
+        alerts = json.loads(path.read_text())
+    except (FileNotFoundError, ValueError):
+        alerts = {}
+    key = f'{now_ist().date().isoformat()}:{mode}'
+    fingerprint = f'{type(error).__name__}: {error}'
+    previous = alerts.get(key, {})
+    if previous.get('error') == fingerprint and time.time() - previous.get('at', 0) < 1800:
+        return
+    alerts[key] = {'error': fingerprint, 'at': time.time()}
+    path.write_text(json.dumps(alerts, indent=2) + '\n')
+    run_daily.webhook(f'Engage-Orbit {mode} failed at {now_ist():%H:%M} IST: {fingerprint}. Scheduled retry remains active; check out/orbit.log if this persists.')
 
 
 async def group_and_topic(client, title):
@@ -251,14 +275,24 @@ def ensure_reply(state, key, tweet_id, reply):
 def ensure_like(state, key, tweet_id):
     if state.get(key) == 'done':
         return
-    if state.get(key) == 'pending':
-        raise RuntimeError(f'{key} was interrupted; inspect X before retrying')
-    if any(k.endswith(f':{tweet_id}:like') and v == 'pending' for k, v in state.items()):
-        raise RuntimeError(f'An earlier X like for {tweet_id} is uncertain; inspect X before retrying')
     if any(k.endswith(f':{tweet_id}:like') and v == 'done' for k, v in state.items()):
         transition(state, key, 'done')
         return
-    unique_action(state, key, lambda: x_action('like', tweet_id))
+    # Liking an already liked tweet is safe to repeat; X reports code 139.
+    # A proxy timeout may occur after X has applied the like, so retry only
+    # this idempotent action, never an uncertain reply or Telegram post.
+    if state.get(key) != 'pending':
+        transition(state, key, 'pending')
+    for attempt in range(3):
+        try:
+            x_action('like', tweet_id)
+        except RuntimeError as exc:
+            if 'Proxy connection timed out' not in str(exc) or attempt == 2:
+                raise
+            time.sleep(15 * (attempt + 1))
+        else:
+            transition(state, key, 'done')
+            return
 
 
 async def telegram_react(client, chat, msg_id, emoji):
@@ -266,7 +300,7 @@ async def telegram_react(client, chat, msg_id, emoji):
                                      reaction=[ReactionEmoji(emoticon=emoji)]))
 
 
-async def execute(client, mode, when, dry):
+async def execute(client, mode, when, dry, slot_override=None):
     today = when.date().isoformat()
     if mode == 'mega-post':
         chat, topic = await group_and_topic(client, 'MEGA ENGAGE')
@@ -324,21 +358,28 @@ async def execute(client, mode, when, dry):
         return
 
     chat, topic = await group_and_topic(client, '10 LIKE SCROLL (10d mute)')
-    slot = like_slot(when)
+    slot = slot_override or like_slot(when)
     key = f'{today}:{slot}'
     source_day, url = posted_tweet_before(when)
     expected_day = (when.date() - timedelta(days=1)).isoformat() if slot == 'likes-07' else today
     if source_day != expected_day:
         raise RuntimeError(f'{slot} requires a successful Sinclair tweet from {expected_day}')
-    msgs = await messages_in_topic(client, chat, topic, 80)
-    own_handle = os.environ.get('X_BOT_USERNAME', 'SinClair_0000').lower()
-    links = [x for x in tweet_links(msgs)
-             if x['url'].split('/')[3].lower() != own_handle][:10]
+    snapshot = OUT / 'orbit' / today / slot / 'candidates.json'
+    if snapshot.exists():
+        links = json.loads(snapshot.read_text())
+    else:
+        msgs = await messages_in_topic(client, chat, topic, 80)
+        own_handle = os.environ.get('X_BOT_USERNAME', 'SinClair_0000').lower()
+        links = [x for x in tweet_links(msgs)
+                 if x['url'].split('/')[3].lower() != own_handle][:10]
     if len(links) != 10:
         raise RuntimeError(f'Only {len(links)} recent 10 LIKE links found; need 10')
     print(f'{slot}: {len(links)} links; share {url}')
     if dry:
         return
+    if not snapshot.exists():
+        snapshot.parent.mkdir(parents=True, exist_ok=True)
+        snapshot.write_text(json.dumps(links, indent=2) + '\n')
     state = load_state()
     for item in reversed(links):
         tid = item['id']
@@ -360,14 +401,24 @@ async def execute(client, mode, when, dry):
     transition(state, f'{key}:complete', 'done')
 
 
-async def main_async(mode, dry):
+async def main_async(mode, dry, scheduled=False):
     run_daily.load_env()
     when = now_ist()
     if mode != 'check' and before_start_date(when):
         print(f'Orbit paused until {os.environ["ORBIT_NOT_BEFORE"]}; no action taken')
         return 0
     if mode != 'check':
-        confirm_slot(mode, when)
+        if scheduled:
+            try:
+                confirm_slot(mode, when)
+            except RuntimeError:
+                return 0
+        else:
+            confirm_slot(mode, when)
+        if scheduled and mode == 'mega-engage' and load_state().get(f'{when.date().isoformat()}:mega:complete') == 'done':
+            return 0
+        if scheduled and mode == 'likes' and not due_like_slots(when, load_state()):
+            return 0
     missing = [name for name in ('TG_API_ID', 'TG_API_HASH', 'TG_PHONE', 'TWITTERAPI_KEY')
                if not os.getenv(name)]
     session = OUT / 'telegram.session'
@@ -396,7 +447,11 @@ async def main_async(mode, dry):
     try:
         if not await client.is_user_authorized():
             raise RuntimeError('Telegram session expired; run python3 tg_setup.py interactively')
-        await execute(client, mode, when, dry)
+        if mode == 'likes' and scheduled:
+            for slot in due_like_slots(when, load_state()):
+                await execute(client, mode, when, dry, slot_override=slot)
+        else:
+            await execute(client, mode, when, dry)
     finally:
         await client.disconnect()
     return 0
@@ -406,11 +461,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('mode', choices=['check', 'mega-post', 'mega-engage', 'likes'])
     parser.add_argument('--dry', action='store_true')
+    parser.add_argument('--scheduled', action='store_true')
     args = parser.parse_args()
     OUT.mkdir(exist_ok=True)
     with (OUT / '.orbit.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        return asyncio.run(main_async(args.mode, args.dry))
+        try:
+            return asyncio.run(main_async(args.mode, args.dry, args.scheduled))
+        except Exception as error:
+            if args.scheduled:
+                notify_failure(args.mode, error)
+            raise
 
 
 if __name__ == '__main__':

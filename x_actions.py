@@ -135,6 +135,15 @@ def act(path, body):
         res = post(path, {**body, "login_cookies": cookies(), "proxy": need("X_BOT_PROXY")})
         if res.get("status") != "success":
             sys.exit(f"stopped, X said: {res.get('message') or res}. Check the account by hand before retrying.")
+        nested = res.get('data', {}).get('response') if isinstance(res.get('data'), dict) else None
+        if isinstance(nested, str):
+            try:
+                nested = json.loads(nested)
+            except ValueError:
+                nested = None
+        errors = nested.get('errors', []) if isinstance(nested, dict) else []
+        if errors and not (path == 'like_tweet_v2' and all(e.get('code') == 139 for e in errors)):
+            sys.exit(f"stopped, X returned an action error: {errors[0].get('message', errors[0])}")
         record()
     print("ok", {k: v for k, v in res.items() if k != "status"})
     return res

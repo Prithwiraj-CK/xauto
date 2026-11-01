@@ -38,10 +38,19 @@ class OrbitTests(unittest.TestCase):
             orbit.confirm_slot('mega-post', datetime(2026, 11, 1, 10, 59, tzinfo=orbit.IST))
         with self.assertRaises(RuntimeError):
             orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 11, 30, tzinfo=orbit.IST))
+        orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 14, 20, tzinfo=orbit.IST))
+        with self.assertRaises(RuntimeError):
+            orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 14, 25, tzinfo=orbit.IST))
         self.assertEqual(orbit.like_slot(datetime(2026, 11, 1, 12, 59, tzinfo=orbit.IST)), 'likes-12')
         self.assertEqual(orbit.like_slot(datetime(2026, 11, 1, 13, 10, tzinfo=orbit.IST)), 'likes-13')
         with self.assertRaises(RuntimeError):
             orbit.like_slot(datetime(2026, 11, 1, 15, 0, tzinfo=orbit.IST))
+
+    def test_overlapping_like_slots_keep_unfinished_noon_cycle(self):
+        when = datetime(2026, 11, 1, 13, 10, tzinfo=orbit.IST)
+        self.assertEqual(orbit.due_like_slots(when, {}), ['likes-12', 'likes-13'])
+        state = {'2026-11-01:likes-12:complete': 'done'}
+        self.assertEqual(orbit.due_like_slots(when, state), ['likes-13'])
 
     def test_morning_mega_uses_same_day_post(self):
         history = {'2026-10-31': {'post_tweet_id': '123'},
@@ -84,6 +93,17 @@ class OrbitTests(unittest.TestCase):
             orbit.ensure_like(state, '2026-11-01:mega:123:like', '123')
             action.assert_not_called()
             self.assertEqual(state['2026-11-01:mega:123:like'], 'done')
+
+    def test_pending_like_retries_after_proxy_timeout(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(orbit, 'STATE', Path(temp) / 'state.json'), \
+             patch.object(orbit, 'x_action', side_effect=[RuntimeError('Proxy connection timed out'), None]) as action, \
+             patch.object(orbit.time, 'sleep') as sleep:
+            key = '2026-11-01:mega:123:like'
+            state = {key: 'pending'}
+            orbit.ensure_like(state, key, '123')
+            self.assertEqual(state[key], 'done')
+            self.assertEqual(action.call_count, 2)
+            sleep.assert_called_once_with(15)
 
     def test_restricted_reply_is_recorded_without_repeating_it(self):
         with tempfile.TemporaryDirectory() as temp, patch.object(orbit, 'STATE', Path(temp) / 'state.json'), \

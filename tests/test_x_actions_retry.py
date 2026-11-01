@@ -2,6 +2,7 @@ import io
 import json
 import socket
 import sys
+import tempfile
 import unittest
 import urllib.error
 from pathlib import Path
@@ -12,6 +13,29 @@ import x_actions
 
 
 class WriteRetryTests(unittest.TestCase):
+    def test_nested_x_error_is_not_recorded_as_success(self):
+        with tempfile.TemporaryDirectory() as temp, \
+             patch.object(x_actions, 'LOCK', Path(temp) / 'lock'), \
+             patch.object(x_actions, 'guard'), patch.object(x_actions, 'cookies', return_value='cookie'), \
+             patch.object(x_actions, 'need', return_value='proxy'), \
+             patch.object(x_actions, 'record') as record, \
+             patch.object(x_actions, 'post', return_value={'status': 'success', 'data': {
+                 'response': json.dumps({'errors': [{'code': 433, 'message': 'Replies restricted'}]})}}):
+            with self.assertRaises(SystemExit):
+                x_actions.act('create_tweet_v2', {'tweet_text': 'reply'})
+            record.assert_not_called()
+
+    def test_already_liked_counts_as_success(self):
+        with tempfile.TemporaryDirectory() as temp, \
+             patch.object(x_actions, 'LOCK', Path(temp) / 'lock'), \
+             patch.object(x_actions, 'guard'), patch.object(x_actions, 'cookies', return_value='cookie'), \
+             patch.object(x_actions, 'need', return_value='proxy'), \
+             patch.object(x_actions, 'record') as record, \
+             patch.object(x_actions, 'post', return_value={'status': 'success', 'data': {
+                 'response': json.dumps({'errors': [{'code': 139, 'message': 'already favorited'}]})}}):
+            x_actions.act('like_tweet_v2', {'tweet_id': '123'})
+            record.assert_called_once()
+
     def test_explicit_rate_limit_retries_then_succeeds(self):
         rejected = urllib.error.HTTPError('url', 429, 'rate limit', {'Retry-After': '2'}, io.BytesIO(b''))
         success = io.BytesIO(json.dumps({'status': 'success'}).encode())
