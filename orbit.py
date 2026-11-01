@@ -511,7 +511,8 @@ async def execute_hourly_scroll(client, when, dry, slot_override=None):
         if len(latest) < 10:
             raise RuntimeError('Hourly scroll lost its ten-link candidate set')
         missing = [item for item in latest
-                   if state.get(f"{key}:msg:{item['message_id']}:reaction") != 'done']
+                   if (state.get(f"{key}:{item['id']}:like") != 'done'
+                       or state.get(f"{key}:msg:{item['message_id']}:reaction") != 'done')]
         if not missing:
             break
         for item in reversed(missing):
