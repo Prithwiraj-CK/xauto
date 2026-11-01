@@ -30,6 +30,7 @@ import scheduled_run
 ROOT = Path(__file__).parent
 OUT = ROOT / 'out'
 STATE = OUT / 'orbit_state.json'
+HOURLY_SCROLL = OUT / 'orbit_hourly_scroll.json'
 IST = ZoneInfo('Asia/Kolkata')
 GROUP = 'Engage-Orbit'
 TWEET = re.compile(r'https?://(?:www\.)?(?:x|twitter)\.com/[A-Za-z0-9_]+/status/(\d+)')
@@ -122,6 +123,29 @@ def due_like_slots(when, state):
             and state.get(f'{when.date().isoformat()}:{name}:complete') != 'done']
 
 
+def hourly_scroll_slot(when):
+    """Return a temporary, date-bound hourly slot, if one was requested."""
+    try:
+        config = json.loads(HOURLY_SCROLL.read_text())
+    except (FileNotFoundError, ValueError):
+        return None
+    if config.get('date') != when.date().isoformat() or when.hour not in config.get('hours', []):
+        return None
+    return 'likes-22' if when.hour == 22 else f'scroll-{when.hour:02d}'
+
+
+def due_hourly_scroll_slots(when, state):
+    try:
+        config = json.loads(HOURLY_SCROLL.read_text())
+    except (FileNotFoundError, ValueError):
+        return []
+    if config.get('date') != when.date().isoformat():
+        return []
+    return [name for hour in config.get('hours', []) if hour <= when.hour
+            for name in [('likes-22' if hour == 22 else f'scroll-{hour:02d}')]
+            if state.get(f'{when.date().isoformat()}:{name}:complete') != 'done']
+
+
 def notify_failure(mode, error):
     """Alert on a new failure, then at most once every 30 minutes while it persists."""
     path = OUT / 'orbit_alerts.json'
@@ -174,6 +198,19 @@ def tweet_links(messages, *, after=None, before=None):
             found.append({'id': match.group(1), 'message_id': msg.id,
                           'url': match.group(0).replace('twitter.com/', 'x.com/')})
     return found
+
+
+def links_after_own_share(messages, own_url, own_handle):
+    own_id = own_url.rsplit('/', 1)[-1]
+    own_messages = [m for m in messages if m.out and TWEET.search(m.message or '')
+                    and TWEET.search(m.message).group(1) == own_id]
+    if not own_messages:
+        raise RuntimeError('Cannot find Sinclair’s last share in 10 LIKE SCROLL')
+    own = max(own_messages, key=lambda m: m.id)
+    after_own = sorted((m for m in messages if m.id > own.id), key=lambda m: m.id)
+    links = [x for x in tweet_links(after_own)
+             if x['url'].split('/')[3].lower() != own_handle.lower()]
+    return own.id, links[:10]
 
 
 def fetch_tweets(ids):
@@ -398,6 +435,66 @@ async def execute(client, mode, when, dry, slot_override=None):
     transition(state, f'{key}:complete', 'done')
 
 
+async def execute_hourly_scroll(client, when, dry, slot_override=None):
+    """Once per configured hour, engage the next ten links after our latest share."""
+    slot = slot_override or hourly_scroll_slot(when)
+    if not slot:
+        return
+    today = when.date().isoformat()
+    key = f'{today}:{slot}'
+    state = load_state()
+    if state.get(f'{key}:complete') == 'done':
+        return
+    source_day, url = posted_tweet_before(when)
+    if source_day != today:
+        raise RuntimeError('Hourly scroll requires today’s successful Sinclair tweet')
+    chat, topic = await group_and_topic(client, '10 LIKE SCROLL (10d mute)')
+    if getattr(topic, 'closed', False):
+        raise RuntimeError('10 LIKE topic is closed')
+    snapshot = OUT / 'orbit' / today / slot / 'candidates.json'
+    if snapshot.exists():
+        saved = json.loads(snapshot.read_text())
+        if saved.get('own_url') != url or len(saved.get('links', [])) != 10:
+            raise RuntimeError('Hourly scroll snapshot is invalid')
+        links = saved['links']
+    else:
+        msgs = await messages_in_topic(client, chat, topic, 1000)
+        own_handle = os.environ.get('X_BOT_USERNAME', 'SinClair_0000').lower()
+        own_message_id, links = links_after_own_share(msgs, url, own_handle)
+        own_message = next(m for m in msgs if m.id == own_message_id)
+        if when - own_message.date.astimezone(IST) < timedelta(minutes=55):
+            print(f'{slot}: last Sinclair share is under 55 minutes old; waiting')
+            return
+        if len(links) < 10:
+            print(f'{slot}: {len(links)} new links after our last share; waiting for 10')
+            return
+        if not dry:
+            snapshot.parent.mkdir(parents=True, exist_ok=True)
+            snapshot.write_text(json.dumps({'anchor_message_id': own_message_id, 'own_url': url,
+                                            'links': links}, indent=2) + '\n')
+    print(f'{slot}: 10 links after our last share; engage then share {url}')
+    if dry:
+        return
+    for item in links:
+        tid = item['id']
+        ensure_like(state, f'{key}:{tid}:like', tid)
+        reaction_key = f'{key}:{tid}:reaction'
+        if state.get(reaction_key) == 'pending':
+            raise RuntimeError(f'Uncertain Telegram reaction for {tid}')
+        if state.get(reaction_key) != 'done':
+            transition(state, reaction_key, 'pending')
+            await telegram_react(client, chat, item['message_id'], '❤')
+            transition(state, reaction_key, 'done')
+    post_key = f'{key}:posted'
+    if state.get(post_key) == 'pending':
+        raise RuntimeError('Uncertain hourly 10 LIKE post; inspect before retry')
+    if state.get(post_key) != 'done':
+        transition(state, post_key, 'pending')
+        await client.send_message(chat, url, reply_to=topic.id, link_preview=False)
+        transition(state, post_key, 'done')
+    transition(state, f'{key}:complete', 'done')
+
+
 async def main_async(mode, dry, scheduled=False):
     run_daily.load_env()
     when = now_ist()
@@ -405,16 +502,16 @@ async def main_async(mode, dry, scheduled=False):
         print(f'Orbit paused until {os.environ["ORBIT_NOT_BEFORE"]}; no action taken')
         return 0
     if mode != 'check':
-        if scheduled:
+        if scheduled and not (mode == 'likes' and due_hourly_scroll_slots(when, load_state())):
             try:
                 confirm_slot(mode, when)
             except RuntimeError:
                 return 0
-        else:
+        elif not scheduled:
             confirm_slot(mode, when)
         if scheduled and mode == 'mega-engage' and load_state().get(f'{when.date().isoformat()}:mega:complete') == 'done':
             return 0
-        if scheduled and mode == 'likes' and not due_like_slots(when, load_state()):
+        if scheduled and mode == 'likes' and not due_like_slots(when, load_state()) and not due_hourly_scroll_slots(when, load_state()):
             return 0
     missing = [name for name in ('TG_API_ID', 'TG_API_HASH', 'TG_PHONE', 'TWITTERAPI_KEY')
                if not os.getenv(name)]
@@ -445,8 +542,13 @@ async def main_async(mode, dry, scheduled=False):
         if not await client.is_user_authorized():
             raise RuntimeError('Telegram session expired; run python3 tg_setup.py interactively')
         if mode == 'likes' and scheduled:
+            hourly_slots = due_hourly_scroll_slots(when, load_state())
             for slot in due_like_slots(when, load_state()):
+                if hourly_scroll_slot(when) and slot == 'likes-22':
+                    continue
                 await execute(client, mode, when, dry, slot_override=slot)
+            for slot in hourly_slots:
+                await execute_hourly_scroll(client, when, dry, slot_override=slot)
         else:
             await execute(client, mode, when, dry)
     finally:

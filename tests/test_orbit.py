@@ -52,6 +52,33 @@ class OrbitTests(unittest.TestCase):
         state = {'2026-11-01:likes-12:complete': 'done'}
         self.assertEqual(orbit.due_like_slots(when, state), ['likes-13'])
 
+    def test_hourly_scroll_uses_ten_new_links_after_latest_own_share(self):
+        def msg(mid, author, tweet_id, out=False):
+            return SimpleNamespace(id=mid, out=out,
+                                   message=f'https://x.com/{author}/status/{tweet_id}')
+        messages = [msg(3, 'SinClair_0000', '999', True),
+                    msg(1, 'SinClair_0000', '999', True),
+                    msg(2, 'a', '100'),
+                    *[msg(i, f'user{i}', str(200 + i)) for i in range(4, 15)],
+                    msg(15, 'SinClair_0000', '999')]
+        anchor, links = orbit.links_after_own_share(list(reversed(messages)),
+            'https://x.com/SinClair_0000/status/999', 'SinClair_0000')
+        self.assertEqual(anchor, 3)
+        self.assertEqual([x['message_id'] for x in links], list(range(4, 14)))
+        self.assertEqual(len(links), 10)
+
+    def test_hourly_scroll_expires_after_configured_date(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(orbit, 'HOURLY_SCROLL', Path(temp) / 'hourly.json'):
+            orbit.HOURLY_SCROLL.write_text(json.dumps({'date': '2026-11-01',
+                                                        'hours': [19, 20, 21, 22, 23]}))
+            self.assertEqual(orbit.hourly_scroll_slot(datetime(2026, 11, 1, 19, 0, tzinfo=orbit.IST)), 'scroll-19')
+            self.assertEqual(orbit.hourly_scroll_slot(datetime(2026, 11, 1, 22, 0, tzinfo=orbit.IST)), 'likes-22')
+            self.assertIsNone(orbit.hourly_scroll_slot(datetime(2026, 11, 2, 19, 0, tzinfo=orbit.IST)))
+            self.assertEqual(orbit.due_hourly_scroll_slots(datetime(2026, 11, 1, 20, 0, tzinfo=orbit.IST), {}),
+                             ['scroll-19', 'scroll-20'])
+            self.assertEqual(orbit.due_hourly_scroll_slots(datetime(2026, 11, 1, 20, 0, tzinfo=orbit.IST),
+                             {'2026-11-01:scroll-19:complete': 'done'}), ['scroll-20'])
+
     def test_morning_mega_uses_same_day_post(self):
         history = {'2026-10-31': {'post_tweet_id': '123'},
                    '2026-11-01': {'post_tweet_id': '456'}}
