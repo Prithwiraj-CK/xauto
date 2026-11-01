@@ -31,16 +31,17 @@ class OrbitTests(unittest.TestCase):
 
     def test_slot_boundaries(self):
         for mode, hour, minute in [('mega-post', 11, 5), ('mega-engage', 11, 35),
-                                   ('likes', 7, 0), ('likes', 12, 0),
+                                   ('likes', 7, 0), ('likes', 12, 0), ('likes', 13, 0),
                                    ('likes', 17, 0), ('likes', 22, 0)]:
             orbit.confirm_slot(mode, datetime(2026, 11, 1, hour, minute, tzinfo=orbit.IST))
         with self.assertRaises(RuntimeError):
             orbit.confirm_slot('mega-post', datetime(2026, 11, 1, 10, 59, tzinfo=orbit.IST))
         with self.assertRaises(RuntimeError):
             orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 11, 30, tzinfo=orbit.IST))
-        self.assertEqual(orbit.like_slot(datetime(2026, 11, 1, 13, 10, tzinfo=orbit.IST)), 'likes-12')
+        self.assertEqual(orbit.like_slot(datetime(2026, 11, 1, 12, 59, tzinfo=orbit.IST)), 'likes-12')
+        self.assertEqual(orbit.like_slot(datetime(2026, 11, 1, 13, 10, tzinfo=orbit.IST)), 'likes-13')
         with self.assertRaises(RuntimeError):
-            orbit.like_slot(datetime(2026, 11, 1, 14, 0, tzinfo=orbit.IST))
+            orbit.like_slot(datetime(2026, 11, 1, 15, 0, tzinfo=orbit.IST))
 
     def test_morning_mega_uses_same_day_post(self):
         history = {'2026-10-31': {'post_tweet_id': '123'},
