@@ -8,6 +8,7 @@ import asyncio
 import fcntl
 import json
 import os
+import random
 import re
 import subprocess
 import sys
@@ -236,13 +237,9 @@ def draft_replies(links, stamp, dry):
 
 
 def x_action(command, tweet_id, reply=None):
-    # A 30 second cross-job minimum; the existing worker still has its own 5 minute guard.
-    log = __import__('x_actions').read_json(OUT / 'x_actions_log.json', [])
-    if log:
-        remaining = 30 - (time.time() - max(log))
-        if remaining > 0:
-            time.sleep(remaining + 1)
-    env = {**os.environ, 'X_BOT_MIN_GAP_SEC': '30'}
+    # Keep each X action about a minute apart while leaving room for the
+    # group's three-hour completion window and transient API retries.
+    env = {**os.environ, 'X_BOT_MIN_GAP_SEC': str(random.randint(45, 75))}
     args = [sys.executable, str(ROOT / 'x_actions.py'), command, tweet_id]
     if reply is not None:
         args.append(reply)
