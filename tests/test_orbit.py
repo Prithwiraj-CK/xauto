@@ -64,8 +64,11 @@ class OrbitTests(unittest.TestCase):
         anchor, links = orbit.links_after_own_share(list(reversed(messages)),
             'https://x.com/SinClair_0000/status/999', 'SinClair_0000')
         self.assertEqual(anchor, 3)
-        self.assertEqual([x['message_id'] for x in links], list(range(4, 14)))
+        self.assertEqual([x['message_id'] for x in links], list(range(14, 4, -1)))
         self.assertEqual(len(links), 10)
+        newer = messages + [msg(16, 'later', '9999')]
+        self.assertEqual([x['message_id'] for x in orbit.latest_links_since_anchor(newer, 3, 'SinClair_0000')],
+                         [16] + list(range(14, 5, -1)))
 
     def test_hourly_scroll_expires_after_configured_date(self):
         with tempfile.TemporaryDirectory() as temp, patch.object(orbit, 'HOURLY_SCROLL', Path(temp) / 'hourly.json'):

@@ -207,10 +207,16 @@ def links_after_own_share(messages, own_url, own_handle):
     if not own_messages:
         raise RuntimeError('Cannot find Sinclair’s last share in 10 LIKE SCROLL')
     own = max(own_messages, key=lambda m: m.id)
-    after_own = sorted((m for m in messages if m.id > own.id), key=lambda m: m.id)
+    # The scroll checks the ten links directly above our next share. When
+    # more than ten arrived since our previous share, take the newest ten.
+    return own.id, latest_links_since_anchor(messages, own.id, own_handle)
+
+
+def latest_links_since_anchor(messages, anchor_id, own_handle):
+    after_own = sorted((m for m in messages if m.id > anchor_id), key=lambda m: m.id, reverse=True)
     links = [x for x in tweet_links(after_own)
              if x['url'].split('/')[3].lower() != own_handle.lower()]
-    return own.id, links[:10]
+    return links[:10]
 
 
 def fetch_tweets(ids):
@@ -451,6 +457,7 @@ async def execute_hourly_scroll(client, when, dry, slot_override=None):
     chat, topic = await group_and_topic(client, '10 LIKE SCROLL (10d mute)')
     if getattr(topic, 'closed', False):
         raise RuntimeError('10 LIKE topic is closed')
+    own_handle = os.environ.get('X_BOT_USERNAME', 'SinClair_0000').lower()
     snapshot = OUT / 'orbit' / today / slot / 'candidates.json'
     if snapshot.exists():
         saved = json.loads(snapshot.read_text())
@@ -459,7 +466,6 @@ async def execute_hourly_scroll(client, when, dry, slot_override=None):
         links = saved['links']
     else:
         msgs = await messages_in_topic(client, chat, topic, 1000)
-        own_handle = os.environ.get('X_BOT_USERNAME', 'SinClair_0000').lower()
         own_message_id, links = links_after_own_share(msgs, url, own_handle)
         own_message = next(m for m in msgs if m.id == own_message_id)
         if when - own_message.date.astimezone(IST) < timedelta(minutes=55):
@@ -468,26 +474,50 @@ async def execute_hourly_scroll(client, when, dry, slot_override=None):
         if len(links) < 10:
             print(f'{slot}: {len(links)} new links after our last share; waiting for 10')
             return
+        saved = {'anchor_message_id': own_message_id, 'own_url': url, 'links': links}
         if not dry:
             snapshot.parent.mkdir(parents=True, exist_ok=True)
-            snapshot.write_text(json.dumps({'anchor_message_id': own_message_id, 'own_url': url,
-                                            'links': links}, indent=2) + '\n')
+            snapshot.write_text(json.dumps(saved, indent=2) + '\n')
     print(f'{slot}: 10 links after our last share; engage then share {url}')
     if dry:
         return
-    for item in links:
+    post_key = f'{key}:posted'
+    if state.get(post_key) == 'pending':
+        raise RuntimeError('Uncertain hourly 10 LIKE post; inspect before retry')
+    initial_message_ids = {item['message_id'] for item in links}
+
+    async def engage(item):
         tid = item['id']
         ensure_like(state, f'{key}:{tid}:like', tid)
-        reaction_key = f'{key}:{tid}:reaction'
+        reaction_key = f"{key}:msg:{item['message_id']}:reaction"
+        if (item['message_id'] in initial_message_ids
+                and state.get(f'{key}:{tid}:reaction') == 'done'):
+            transition(state, reaction_key, 'done')
+            return
         if state.get(reaction_key) == 'pending':
             raise RuntimeError(f'Uncertain Telegram reaction for {tid}')
         if state.get(reaction_key) != 'done':
             transition(state, reaction_key, 'pending')
             await telegram_react(client, chat, item['message_id'], '❤')
             transition(state, reaction_key, 'done')
-    post_key = f'{key}:posted'
-    if state.get(post_key) == 'pending':
-        raise RuntimeError('Uncertain hourly 10 LIKE post; inspect before retry')
+
+    for item in links:
+        await engage(item)
+    # New links can arrive while the ten API likes are in flight. Re-read the
+    # topic before sharing, and cover the actual ten links directly above us.
+    for _ in range(20):
+        msgs = await messages_in_topic(client, chat, topic, 1000)
+        latest = latest_links_since_anchor(msgs, saved['anchor_message_id'], own_handle)
+        if len(latest) < 10:
+            raise RuntimeError('Hourly scroll lost its ten-link candidate set')
+        missing = [item for item in latest
+                   if state.get(f"{key}:msg:{item['message_id']}:reaction") != 'done']
+        if not missing:
+            break
+        for item in reversed(missing):
+            await engage(item)
+    else:
+        raise RuntimeError('New links kept arriving; did not repost before covering the latest ten')
     if state.get(post_key) != 'done':
         transition(state, post_key, 'pending')
         await client.send_message(chat, url, reply_to=topic.id, link_preview=False)
