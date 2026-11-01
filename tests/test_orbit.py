@@ -1,4 +1,6 @@
+import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -6,12 +8,27 @@ from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
+import urllib.error
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import orbit
 
 
 class OrbitTests(unittest.TestCase):
+    def test_read_request_retries_transient_failure(self):
+        good = io.BytesIO(json.dumps({'tweets': [{'id': '123'}]}).encode())
+        with patch.dict(os.environ, {'TWITTERAPI_KEY': 'test'}), \
+             patch.object(orbit.urllib.request, 'urlopen', side_effect=[urllib.error.URLError('network'), good]) as request, \
+             patch.object(orbit.time, 'sleep') as sleep:
+            self.assertIn('123', orbit.fetch_tweets(['123']))
+            self.assertEqual(request.call_count, 2)
+            sleep.assert_called_once_with(5)
+
+    def test_start_date_skips_today_and_allows_tomorrow(self):
+        with patch.dict(os.environ, {'ORBIT_NOT_BEFORE': '2026-11-02'}):
+            self.assertTrue(orbit.before_start_date(datetime(2026, 11, 1, 11, 5, tzinfo=orbit.IST)))
+            self.assertFalse(orbit.before_start_date(datetime(2026, 11, 2, 7, 0, tzinfo=orbit.IST)))
+
     def test_slot_boundaries(self):
         for mode, hour, minute in [('mega-post', 11, 5), ('mega-engage', 11, 35),
                                    ('likes', 7, 0), ('likes', 12, 0),

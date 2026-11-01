@@ -19,6 +19,7 @@ import json
 import fcntl
 import mimetypes
 import os
+import socket
 import sys
 import time
 import urllib.error
@@ -50,13 +51,28 @@ def need(name):
 
 
 def post(path, body):
-    req = urllib.request.Request(f"{API}/{path}", data=json.dumps(body).encode(), method="POST",
-                                 headers={"X-API-Key": need("TWITTERAPI_KEY"), "Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=60) as r:
-            return json.load(r)
-    except urllib.error.HTTPError as e:
-        return {"status": "error", "message": f"HTTP {e.code}: {e.read().decode()[:300]}"}
+    payload = json.dumps(body).encode()
+    for attempt in range(3):
+        req = urllib.request.Request(f"{API}/{path}", data=payload, method="POST",
+                                     headers={"X-API-Key": need("TWITTERAPI_KEY"), "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            # A 429 is an explicit rejection, so the action was not accepted.
+            if e.code == 429 and attempt < 2:
+                retry_after = e.headers.get('Retry-After', '') if e.headers else ''
+                delay = min(60, max(2, int(retry_after))) if retry_after.isdigit() else (5 * (attempt + 1))
+                time.sleep(delay)
+                continue
+            return {"status": "error", "message": f"HTTP {e.code}: {e.read().decode()[:300]}"}
+        except urllib.error.URLError as e:
+            # DNS and connection refusal happen before a request reaches the API.
+            # A timeout or connection reset can occur after an action, so do not retry those.
+            if isinstance(e.reason, (socket.gaierror, ConnectionRefusedError)) and attempt < 2:
+                time.sleep(5 * (attempt + 1))
+                continue
+            raise
 
 
 def read_json(p, default):

@@ -13,8 +13,9 @@ import subprocess
 import sys
 import time
 import urllib.parse
+import urllib.error
 import urllib.request
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -39,6 +40,11 @@ STOP_WORDS = {'about', 'after', 'again', 'could', 'from', 'have', 'just', 'more'
 
 def now_ist():
     return datetime.now(IST)
+
+
+def before_start_date(when):
+    raw = os.environ.get('ORBIT_NOT_BEFORE')
+    return bool(raw and when.date() < date.fromisoformat(raw))
 
 
 def load_state():
@@ -147,8 +153,18 @@ def tweet_links(messages, *, after=None, before=None):
 def fetch_tweets(ids):
     url = 'https://api.twitterapi.io/twitter/tweets?' + urllib.parse.urlencode({'tweet_ids': ','.join(ids)})
     req = urllib.request.Request(url, headers={'X-API-Key': os.environ['TWITTERAPI_KEY']})
-    with urllib.request.urlopen(req, timeout=45) as response:
-        data = json.load(response)
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=45) as response:
+                data = json.load(response)
+            break
+        except urllib.error.HTTPError as exc:
+            if attempt == 2 or exc.code not in (429, 500, 502, 503, 504):
+                raise
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == 2:
+                raise
+        time.sleep(5 * (attempt + 1))
     tweets = data.get('tweets') or data.get('data', {}).get('tweets') or []
     return {str(t['id']): t for t in tweets}
 
@@ -207,7 +223,8 @@ def x_action(command, tweet_id, reply=None):
         args.append(reply)
     result = subprocess.run(args, cwd=ROOT, env=env, capture_output=True, text=True)
     if result.returncode or not result.stdout.startswith('ok '):
-        raise RuntimeError(f'X {command} failed for {tweet_id}: {(result.stderr or result.stdout)[:300]}')
+        detail = (result.stderr or result.stdout).strip()
+        raise RuntimeError(f'X {command} failed for {tweet_id}: {detail[-600:]}')
 
 
 def ensure_like(state, key, tweet_id):
@@ -215,6 +232,8 @@ def ensure_like(state, key, tweet_id):
         return
     if state.get(key) == 'pending':
         raise RuntimeError(f'{key} was interrupted; inspect X before retrying')
+    if any(k.endswith(f':{tweet_id}:like') and v == 'pending' for k, v in state.items()):
+        raise RuntimeError(f'An earlier X like for {tweet_id} is uncertain; inspect X before retrying')
     if any(k.endswith(f':{tweet_id}:like') and v == 'done' for k, v in state.items()):
         transition(state, key, 'done')
         return
@@ -324,6 +343,9 @@ async def execute(client, mode, when, dry):
 async def main_async(mode, dry):
     run_daily.load_env()
     when = now_ist()
+    if mode != 'check' and before_start_date(when):
+        print(f'Orbit paused until {os.environ["ORBIT_NOT_BEFORE"]}; no action taken')
+        return 0
     if mode != 'check':
         confirm_slot(mode, when)
     missing = [name for name in ('TG_API_ID', 'TG_API_HASH', 'TG_PHONE', 'TWITTERAPI_KEY')
