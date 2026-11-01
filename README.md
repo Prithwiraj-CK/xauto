@@ -49,7 +49,7 @@ The documented breaking-news override requires a source URL and reason in `sched
 | `run_daily.py` / `run_replies.py` | post the daily tweet and spaced replies |
 | `scan.py`, `REPLY_GUIDE.md`, `config/creators.txt` | reply helper |
 | `trends.py` | last 48h of Meteora / DLMM / LP Army talk for trend posts (budget-capped, max $0.10) |
-| `spend.py` | twitterapi.io balance; each routine run posts its cost + balance to Discord, warns under $1 |
+| `spend.py` | twitterapi.io balance and Webshare proxy period; each routine run posts its cost, remaining API balance, and proxy period to Discord, and warns when API balance is under $1. Set `WEBSHARE_API_KEY` in the private `.env` for the proxy period. |
 | `discover.py` | find & rank accounts posting about Meteora → `--apply` adds top 15 to `creators.txt` |
 | `discord_reader.py` / `discord_user_reader.py` | allowlisted channel reader with bot Gateway and user REST modes |
 
