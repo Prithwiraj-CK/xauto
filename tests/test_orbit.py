@@ -85,6 +85,15 @@ class OrbitTests(unittest.TestCase):
             action.assert_not_called()
             self.assertEqual(state['2026-11-01:mega:123:like'], 'done')
 
+    def test_restricted_reply_is_recorded_without_repeating_it(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(orbit, 'STATE', Path(temp) / 'state.json'), \
+             patch.object(orbit, 'x_action', side_effect=orbit.ReplyRestrictedError('restricted')) as action:
+            state = {}
+            orbit.ensure_reply(state, '2026-11-01:mega:123:reply', '123', 'a relevant reply')
+            self.assertEqual(state['2026-11-01:mega:123:reply'], 'unavailable')
+            orbit.ensure_reply(state, '2026-11-01:mega:123:reply', '123', 'a relevant reply')
+            action.assert_called_once()
+
     def test_generic_mega_reply_is_rejected_before_engagement(self):
         with tempfile.TemporaryDirectory() as temp, patch.object(orbit, 'OUT', Path(temp)):
             folder = Path(temp) / 'orbit' / '2026-11-01'

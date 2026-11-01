@@ -225,7 +225,27 @@ def x_action(command, tweet_id, reply=None):
     result = subprocess.run(args, cwd=ROOT, env=env, capture_output=True, text=True)
     if result.returncode or not result.stdout.startswith('ok '):
         detail = (result.stderr or result.stdout).strip()
+        if command == 'reply' and 'original Tweet author restricted who can reply' in detail:
+            raise ReplyRestrictedError(f'X replies restricted for {tweet_id}')
         raise RuntimeError(f'X {command} failed for {tweet_id}: {detail[-600:]}')
+
+
+class ReplyRestrictedError(RuntimeError):
+    """X explicitly rejected this reply because the author restricted replies."""
+
+
+def ensure_reply(state, key, tweet_id, reply):
+    if state.get(key) in ('done', 'unavailable'):
+        return
+    if state.get(key) == 'pending':
+        raise RuntimeError(f'{key} was interrupted; inspect X before retrying')
+    transition(state, key, 'pending')
+    try:
+        x_action('reply', tweet_id, reply)
+    except ReplyRestrictedError:
+        transition(state, key, 'unavailable')
+    else:
+        transition(state, key, 'done')
 
 
 def ensure_like(state, key, tweet_id):
@@ -292,7 +312,7 @@ async def execute(client, mode, when, dry):
         for item in reversed(links):
             tid = item['id']
             ensure_like(state, f'{today}:mega:{tid}:like', tid)
-            unique_action(state, f'{today}:mega:{tid}:reply', lambda t=tid: x_action('reply', t, by_id[t]))
+            ensure_reply(state, f'{today}:mega:{tid}:reply', tid, by_id[tid])
             reaction_key = f'{today}:mega:{tid}:reaction'
             if state.get(reaction_key) == 'pending':
                 raise RuntimeError(f'Uncertain Telegram reaction for {tid}')
