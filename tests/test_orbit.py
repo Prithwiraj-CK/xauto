@@ -1,3 +1,4 @@
+import asyncio
 import io
 import json
 import os
@@ -7,7 +8,7 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 import urllib.error
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -97,6 +98,19 @@ class OrbitTests(unittest.TestCase):
         newer = messages + [msg(16, 'later', '9999')]
         self.assertEqual([x['message_id'] for x in orbit.latest_links_since_anchor(newer, 3, 'SinClair_0000')],
                          [16] + list(range(14, 5, -1)))
+
+    def test_backlogged_scroll_uses_new_link_guard_before_sharing_again(self):
+        url = 'https://x.com/SinClair_0000/status/999'
+        own = SimpleNamespace(id=42, out=True, message=url)
+        when = datetime(2026, 11, 2, 14, 30, tzinfo=orbit.IST)
+        with patch.object(orbit, 'group_and_topic', new_callable=AsyncMock,
+                          return_value=('chat', SimpleNamespace(id=1))), \
+             patch.object(orbit, 'messages_in_topic', new_callable=AsyncMock,
+                          return_value=[own]), \
+             patch.object(orbit, 'scroll_post', return_value=('2026-11-02', url)), \
+             patch.object(orbit, 'execute_hourly_scroll', new_callable=AsyncMock) as guarded:
+            asyncio.run(orbit.execute(None, 'likes', when, False, slot_override='likes-1430'))
+            guarded.assert_awaited_once_with(None, when, False, slot_override='likes-1430')
 
     def test_regular_scroll_recheck_replaces_oldest_link_when_new_one_arrives(self):
         def msg(mid, author):

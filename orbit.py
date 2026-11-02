@@ -251,15 +251,19 @@ def tweet_links(messages, *, after=None, before=None):
 
 
 def links_after_own_share(messages, own_url, own_handle):
+    own = latest_own_share(messages, own_url)
+    if own is None:
+        raise RuntimeError('Cannot find Sinclair’s last share in 10 LIKE SCROLL')
+    return own.id, latest_links_since_anchor(messages, own.id, own_handle)
+
+
+def latest_own_share(messages, own_url):
     own_id = own_url.rsplit('/', 1)[-1]
     own_messages = [m for m in messages if m.out and TWEET.search(m.message or '')
                     and TWEET.search(m.message).group(1) == own_id]
     if not own_messages:
-        raise RuntimeError('Cannot find Sinclair’s last share in 10 LIKE SCROLL')
-    own = max(own_messages, key=lambda m: m.id)
-    # The scroll checks the ten links directly above our next share. When
-    # more than ten arrived since our previous share, take the newest ten.
-    return own.id, latest_links_since_anchor(messages, own.id, own_handle)
+        return None
+    return max(own_messages, key=lambda m: m.id)
 
 
 def latest_links_since_anchor(messages, anchor_id, own_handle):
@@ -468,6 +472,12 @@ async def execute(client, mode, when, dry, slot_override=None):
     expected_day = (when.date() - timedelta(days=1)).isoformat() if slot == 'likes-07' else today
     if source_day != expected_day:
         raise RuntimeError(f'{slot} requires a successful Sinclair tweet from {expected_day}')
+    # Backlogged slots may run minutes apart. A repeated share must wait for
+    # ten new member links after the latest share of this tweet.
+    msgs = await messages_in_topic(client, chat, topic, 1000)
+    if latest_own_share(msgs, url) is not None:
+        await execute_hourly_scroll(client, when, dry, slot_override=slot)
+        return
     snapshot = OUT / 'orbit' / today / slot / 'candidates.json'
     if snapshot.exists():
         links = json.loads(snapshot.read_text())
@@ -528,6 +538,9 @@ async def execute(client, mode, when, dry, slot_override=None):
     if state.get(post_key) == 'pending':
         raise RuntimeError('Uncertain 10 LIKE post; inspect before retry')
     if state.get(post_key) != 'done':
+        msgs = await messages_in_topic(client, chat, topic, 1000)
+        if latest_own_share(msgs, url) is not None:
+            raise RuntimeError('Sinclair already shared this tweet; inspect before retry')
         transition(state, post_key, 'pending')
         await client.send_message(chat, url, reply_to=topic.id, link_preview=False)
         transition(state, post_key, 'done')
@@ -544,7 +557,7 @@ async def execute_hourly_scroll(client, when, dry, slot_override=None):
     state = load_state()
     if state.get(f'{key}:complete') == 'done':
         return
-    source_day, url = posted_tweet_before(when)
+    source_day, url = scroll_post(when, slot)
     if source_day != today:
         raise RuntimeError('Hourly scroll requires today’s successful Sinclair tweet')
     chat, topic = await group_and_topic(client, '10 LIKE SCROLL (10d mute)')
@@ -600,6 +613,9 @@ async def execute_hourly_scroll(client, when, dry, slot_override=None):
     # topic before sharing, and cover the actual ten links directly above us.
     for _ in range(20):
         msgs = await messages_in_topic(client, chat, topic, 1000)
+        own = latest_own_share(msgs, url)
+        if own is None or own.id != saved['anchor_message_id']:
+            raise RuntimeError('Sinclair shared again since this cycle began; inspect before retry')
         latest = latest_links_since_anchor(msgs, saved['anchor_message_id'], own_handle)
         if len(latest) < 10:
             raise RuntimeError('Hourly scroll lost its ten-link candidate set')
