@@ -219,6 +219,12 @@ def latest_links_since_anchor(messages, anchor_id, own_handle):
     return links[:10]
 
 
+def latest_scroll_links(messages, own_handle):
+    recent = sorted(messages, key=lambda m: m.id, reverse=True)
+    return [x for x in tweet_links(recent)
+            if x['url'].split('/')[3].lower() != own_handle.lower()][:10]
+
+
 def fetch_tweets(ids):
     url = 'https://api.twitterapi.io/twitter/tweets?' + urllib.parse.urlencode({'tweet_ids': ','.join(ids)})
     req = urllib.request.Request(url, headers={'X-API-Key': os.environ['TWITTERAPI_KEY']})
@@ -410,8 +416,7 @@ async def execute(client, mode, when, dry, slot_override=None):
     else:
         msgs = await messages_in_topic(client, chat, topic, 80)
         own_handle = os.environ.get('X_BOT_USERNAME', 'SinClair_0000').lower()
-        links = [x for x in tweet_links(msgs)
-                 if x['url'].split('/')[3].lower() != own_handle][:10]
+        links = latest_scroll_links(msgs, own_handle)
     if len(links) != 10:
         raise RuntimeError(f'Only {len(links)} recent 10 LIKE links found; need 10')
     print(f'{slot}: {len(links)} links; share {url}')
@@ -421,16 +426,46 @@ async def execute(client, mode, when, dry, slot_override=None):
         snapshot.parent.mkdir(parents=True, exist_ok=True)
         snapshot.write_text(json.dumps(links, indent=2) + '\n')
     state = load_state()
-    for item in reversed(links):
+    initial_message_ids = {item['message_id'] for item in links}
+
+    async def engage(item):
         tid = item['id']
         ensure_like(state, f'{key}:{tid}:like', tid)
         reaction_key = f'{key}:{tid}:reaction'
-        if state.get(reaction_key) == 'pending':
+        message_key = f"{key}:msg:{item['message_id']}:reaction"
+        if item['message_id'] in initial_message_ids and state.get(reaction_key) == 'pending':
             raise RuntimeError(f'Uncertain Telegram reaction for {tid}')
-        if state.get(reaction_key) != 'done':
-            transition(state, reaction_key, 'pending')
+        if item['message_id'] in initial_message_ids and state.get(reaction_key) == 'done':
+            transition(state, message_key, 'done')
+            return
+        if state.get(message_key) == 'pending':
+            raise RuntimeError(f'Uncertain Telegram reaction for message {item["message_id"]}')
+        if state.get(message_key) != 'done':
+            transition(state, message_key, 'pending')
             await telegram_react(client, chat, item['message_id'], '❤')
+            transition(state, message_key, 'done')
+        if item['message_id'] in initial_message_ids:
             transition(state, reaction_key, 'done')
+
+    for item in reversed(links):
+        await engage(item)
+    # Posts can arrive while X processes the first ten likes. Cover the ten
+    # links that are actually above our share, including late arrivals.
+    own_handle = os.environ.get('X_BOT_USERNAME', 'SinClair_0000').lower()
+    for _ in range(20):
+        msgs = await messages_in_topic(client, chat, topic, 1000)
+        latest = latest_scroll_links(msgs, own_handle)
+        if len(latest) < 10:
+            raise RuntimeError('Scroll lost its ten-link candidate set')
+        missing = [item for item in latest
+                   if (state.get(f"{key}:{item['id']}:like") != 'done'
+                       or state.get(f"{key}:msg:{item['message_id']}:reaction") != 'done')]
+        if not missing:
+            break
+        for item in reversed(missing):
+            await engage(item)
+    else:
+        raise RuntimeError('New links kept arriving; did not share before covering the latest ten')
     post_key = f'{key}:posted'
     if state.get(post_key) == 'pending':
         raise RuntimeError('Uncertain 10 LIKE post; inspect before retry')

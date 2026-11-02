@@ -70,6 +70,16 @@ class OrbitTests(unittest.TestCase):
         self.assertEqual([x['message_id'] for x in orbit.latest_links_since_anchor(newer, 3, 'SinClair_0000')],
                          [16] + list(range(14, 5, -1)))
 
+    def test_regular_scroll_recheck_replaces_oldest_link_when_new_one_arrives(self):
+        def msg(mid, author):
+            return SimpleNamespace(id=mid, message=f'https://x.com/{author}/status/{mid}')
+        first = [msg(i, f'user{i}') for i in range(1, 11)]
+        self.assertEqual([x['message_id'] for x in orbit.latest_scroll_links(first, 'SinClair_0000')],
+                         list(range(10, 0, -1)))
+        with_new = first + [msg(11, 'SinClair_0000'), msg(12, 'new_member')]
+        self.assertEqual([x['message_id'] for x in orbit.latest_scroll_links(with_new, 'SinClair_0000')],
+                         [12] + list(range(10, 1, -1)))
+
     def test_hourly_scroll_expires_after_configured_date(self):
         with tempfile.TemporaryDirectory() as temp, patch.object(orbit, 'HOURLY_SCROLL', Path(temp) / 'hourly.json'):
             orbit.HOURLY_SCROLL.write_text(json.dumps({'date': '2026-11-01',
