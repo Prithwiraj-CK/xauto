@@ -52,6 +52,34 @@ class OrbitTests(unittest.TestCase):
         state = {'2026-11-01:likes-12:complete': 'done'}
         self.assertEqual(orbit.due_like_slots(when, state), ['likes-13'])
 
+    def test_one_day_post_override_and_extra_sessions_expire(self):
+        config = {'date': '2026-11-02',
+                  'url': 'https://x.com/SinClair_0000/status/2117164586495615402',
+                  'extra_mega_hour': 16,
+                  'scroll_retry_minutes': 240,
+                  'extra_scroll_times': ['14:30', '16:00', '18:00', '20:00']}
+        with tempfile.TemporaryDirectory() as temp, \
+             patch.object(orbit, 'SPECIAL', Path(temp) / 'special.json'):
+            orbit.SPECIAL.write_text(json.dumps(config))
+            afternoon = datetime(2026, 11, 2, 14, 30, tzinfo=orbit.IST)
+            self.assertEqual(orbit.scroll_post(afternoon, 'likes-1430'),
+                             ('2026-11-02', config['url']))
+            self.assertIn('likes-1430', orbit.due_like_slots(afternoon, {}))
+            self.assertIn('likes-12', orbit.due_like_slots(afternoon, {}))
+            self.assertEqual(orbit.due_like_slots(datetime(2026, 11, 2, 17, 0,
+                             tzinfo=orbit.IST), {}),
+                             ['likes-1430', 'likes-1600', 'likes-17'])
+            self.assertEqual(orbit.mega_session(datetime(2026, 11, 2, 16, 5,
+                             tzinfo=orbit.IST)), ('mega-16', 16))
+            orbit.confirm_slot('mega-post', datetime(2026, 11, 2, 16, 5,
+                               tzinfo=orbit.IST))
+            orbit.confirm_slot('mega-engage', datetime(2026, 11, 2, 16, 35,
+                               tzinfo=orbit.IST))
+            tomorrow = datetime(2026, 11, 3, 14, 30, tzinfo=orbit.IST)
+            self.assertNotIn('likes-1430', orbit.due_like_slots(tomorrow, {}))
+            self.assertEqual(orbit.mega_session(datetime(2026, 11, 3, 16, 5,
+                             tzinfo=orbit.IST)), ('mega', 11))
+
     def test_hourly_scroll_uses_ten_new_links_after_latest_own_share(self):
         def msg(mid, author, tweet_id, out=False):
             return SimpleNamespace(id=mid, out=out,
