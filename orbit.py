@@ -36,7 +36,10 @@ IST = ZoneInfo('Asia/Kolkata')
 GROUP = 'Engage-Orbit'
 TWEET = re.compile(r'https?://(?:www\.)?(?:x|twitter)\.com/[A-Za-z0-9_]+/status/(\d+)')
 SLOTS = {'likes-07': (7, 0), 'likes-12': (12, 0), 'likes-13': (13, 0),
-         'likes-17': (17, 0), 'likes-22': (22, 0)}
+         'likes-14': (14, 0), 'likes-1515': (15, 15), 'likes-1610': (16, 10),
+         'likes-17': (17, 0), 'likes-18': (18, 0), 'likes-1910': (19, 10),
+         'likes-20': (20, 0), 'likes-21': (21, 0), 'likes-22': (22, 0),
+         'likes-23': (23, 0)}
 STOP_WORDS = {'about', 'after', 'again', 'could', 'from', 'have', 'just', 'more',
               'that', 'their', 'there', 'these', 'this', 'what', 'when', 'where',
               'which', 'with', 'would', 'your'}

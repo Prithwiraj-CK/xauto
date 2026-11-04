@@ -33,7 +33,11 @@ class OrbitTests(unittest.TestCase):
     def test_slot_boundaries(self):
         for mode, hour, minute in [('mega-post', 11, 5), ('mega-engage', 11, 35),
                                    ('likes', 7, 0), ('likes', 12, 0), ('likes', 13, 0),
-                                   ('likes', 17, 0), ('likes', 22, 0)]:
+                                   ('likes', 14, 0), ('likes', 15, 15),
+                                   ('likes', 16, 10), ('likes', 17, 0),
+                                   ('likes', 18, 0), ('likes', 19, 10),
+                                   ('likes', 20, 0), ('likes', 21, 0),
+                                   ('likes', 22, 0), ('likes', 23, 0)]:
             orbit.confirm_slot(mode, datetime(2026, 11, 1, hour, minute, tzinfo=orbit.IST))
         with self.assertRaises(RuntimeError):
             orbit.confirm_slot('mega-post', datetime(2026, 11, 1, 10, 59, tzinfo=orbit.IST))
@@ -52,14 +56,25 @@ class OrbitTests(unittest.TestCase):
                 orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 17, 0, tzinfo=orbit.IST))
         self.assertEqual(orbit.like_slot(datetime(2026, 11, 1, 12, 59, tzinfo=orbit.IST)), 'likes-12')
         self.assertEqual(orbit.like_slot(datetime(2026, 11, 1, 13, 10, tzinfo=orbit.IST)), 'likes-13')
+        self.assertEqual(orbit.like_slot(datetime(2026, 11, 1, 15, 0, tzinfo=orbit.IST)), 'likes-14')
         with self.assertRaises(RuntimeError):
-            orbit.like_slot(datetime(2026, 11, 1, 15, 0, tzinfo=orbit.IST))
+            orbit.like_slot(datetime(2026, 11, 1, 11, 0, tzinfo=orbit.IST))
 
     def test_overlapping_like_slots_keep_unfinished_noon_cycle(self):
         when = datetime(2026, 11, 1, 13, 10, tzinfo=orbit.IST)
         self.assertEqual(orbit.due_like_slots(when, {}), ['likes-12', 'likes-13'])
         state = {'2026-11-01:likes-12:complete': 'done'}
         self.assertEqual(orbit.due_like_slots(when, state), ['likes-13'])
+
+    def test_new_scroll_times_recur_on_future_days(self):
+        expected = ['likes-07', 'likes-12', 'likes-13', 'likes-14',
+                    'likes-1515', 'likes-1610', 'likes-17', 'likes-18',
+                    'likes-1910', 'likes-20', 'likes-21', 'likes-22', 'likes-23']
+        with tempfile.TemporaryDirectory() as temp, \
+             patch.object(orbit, 'SPECIAL', Path(temp) / 'special.json'):
+            for day in (4, 5, 9):
+                when = datetime(2026, 11, day, 12, 0, tzinfo=orbit.IST)
+                self.assertEqual(list(orbit.scroll_slots(when)), expected)
 
     def test_one_day_post_override_and_extra_sessions_expire(self):
         config = {'date': '2026-11-02',
@@ -77,7 +92,8 @@ class OrbitTests(unittest.TestCase):
             self.assertIn('likes-12', orbit.due_like_slots(afternoon, {}))
             self.assertEqual(orbit.due_like_slots(datetime(2026, 11, 2, 17, 0,
                              tzinfo=orbit.IST), {}),
-                             ['likes-1430', 'likes-1600', 'likes-17'])
+                             ['likes-14', 'likes-1430', 'likes-1515',
+                              'likes-1600', 'likes-1610', 'likes-17'])
             self.assertEqual(orbit.mega_session(datetime(2026, 11, 2, 16, 5,
                              tzinfo=orbit.IST)), ('mega-16', 16))
             orbit.confirm_slot('mega-post', datetime(2026, 11, 2, 16, 5,
