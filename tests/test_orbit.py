@@ -112,6 +112,22 @@ class OrbitTests(unittest.TestCase):
             asyncio.run(orbit.execute(None, 'likes', when, False, slot_override='likes-1430'))
             guarded.assert_awaited_once_with(None, when, False, slot_override='likes-1430')
 
+    def test_seven_am_repeated_share_uses_yesterdays_tweet(self):
+        url = 'https://x.com/SinClair_0000/status/999'
+        when = datetime(2026, 11, 4, 7, 0, tzinfo=orbit.IST)
+        own = SimpleNamespace(id=42, out=True, message=url,
+                              date=datetime(2026, 11, 3, 22, 0, tzinfo=orbit.IST))
+        with tempfile.TemporaryDirectory() as temp, \
+             patch.object(orbit, 'OUT', Path(temp)), \
+             patch.object(orbit, 'load_state', return_value={}), \
+             patch.object(orbit, 'scroll_post', return_value=('2026-11-03', url)), \
+             patch.object(orbit, 'group_and_topic', new_callable=AsyncMock,
+                          return_value=('chat', SimpleNamespace(id=1, closed=False))), \
+             patch.object(orbit, 'messages_in_topic', new_callable=AsyncMock,
+                          return_value=[own]):
+            asyncio.run(orbit.execute_hourly_scroll(None, when, False,
+                                                    slot_override='likes-07'))
+
     def test_regular_scroll_recheck_replaces_oldest_link_when_new_one_arrives(self):
         def msg(mid, author):
             return SimpleNamespace(id=mid, message=f'https://x.com/{author}/status/{mid}')

@@ -558,8 +558,9 @@ async def execute_hourly_scroll(client, when, dry, slot_override=None):
     if state.get(f'{key}:complete') == 'done':
         return
     source_day, url = scroll_post(when, slot)
-    if source_day != today:
-        raise RuntimeError('Hourly scroll requires today’s successful Sinclair tweet')
+    expected_day = (when.date() - timedelta(days=1)).isoformat() if slot == 'likes-07' else today
+    if source_day != expected_day:
+        raise RuntimeError(f'{slot} requires a successful Sinclair tweet from {expected_day}')
     chat, topic = await group_and_topic(client, '10 LIKE SCROLL (10d mute)')
     if getattr(topic, 'closed', False):
         raise RuntimeError('10 LIKE topic is closed')
