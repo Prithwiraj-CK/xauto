@@ -150,6 +150,44 @@ class OrbitTests(unittest.TestCase):
             self.assertEqual(orbit.due_hourly_scroll_slots(datetime(2026, 11, 1, 20, 0, tzinfo=orbit.IST),
                              {'2026-11-01:scroll-19:complete': 'done'}), ['scroll-20'])
 
+    def test_official_mega_file_engages_only_visible_links_and_marks_partial(self):
+        when = datetime(2026, 11, 4, 12, 0, tzinfo=orbit.IST)
+        date = datetime(2026, 11, 4, 5, 40, tzinfo=timezone.utc)
+        own_url = 'https://x.com/SinClair_0000/status/1'
+        close_date = datetime(2026, 11, 4, 6, 0, tzinfo=timezone.utc)
+        document = ('2026-11-04 06:00 UTC\n' + own_url +
+                    '\nhttps://x.com/member/status/2\nhttps://x.com/missing/status/3\n')
+        messages = [SimpleNamespace(id=5, date=close_date, message='',
+                                    file=SimpleNamespace(name='links.txt')),
+                    SimpleNamespace(id=4, date=close_date, message='Total Links: 3'),
+                    SimpleNamespace(id=2, date=date, message='https://x.com/member/status/2'),
+                    SimpleNamespace(id=1, date=date, message=own_url)]
+        client = AsyncMock()
+        client.download_media.return_value = document.encode()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with patch.object(orbit, 'OUT', root), \
+                 patch.object(orbit, 'STATE', root / 'state.json'), \
+                 patch.object(orbit, 'group_and_topic', new_callable=AsyncMock,
+                              return_value=('chat', SimpleNamespace(id=1))), \
+                 patch.object(orbit, 'messages_in_topic', new_callable=AsyncMock,
+                              return_value=messages), \
+                 patch.object(orbit, 'posted_tweet_before', return_value=('2026-11-04', own_url)), \
+                 patch.object(orbit, 'draft_replies', return_value=([{'id': '2'}],
+                              [{'id': '2', 'reply': 'A relevant four word reply'}])) as drafts, \
+                 patch.object(orbit, 'ensure_like') as like, \
+                 patch.object(orbit, 'ensure_reply') as reply, \
+                 patch.object(orbit, 'telegram_react', new_callable=AsyncMock) as react:
+                asyncio.run(orbit.execute(client, 'mega-engage', when, False))
+            client.download_media.assert_awaited_once()
+            self.assertEqual([x['id'] for x in drafts.call_args.args[0]], ['2'])
+            like.assert_called_once()
+            reply.assert_called_once()
+            react.assert_awaited_once()
+            state = json.loads((root / 'state.json').read_text())
+            self.assertEqual(state['2026-11-04:mega:partial'], 'done')
+            self.assertNotIn('2026-11-04:mega:complete', state)
+
     def test_morning_mega_uses_same_day_post(self):
         history = {'2026-10-31': {'post_tweet_id': '123'},
                    '2026-11-01': {'post_tweet_id': '456'}}

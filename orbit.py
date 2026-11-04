@@ -443,7 +443,28 @@ async def execute(client, mode, when, dry, slot_override=None):
             raise RuntimeError('No MEGA session-close notice yet')
         count_match = re.search(r'Total Links:\s*(\d+)', close.message)
         count = int(count_match.group(1)) if count_match else 0
-        if not count or len(links) not in (count, count - 1):
+        official = OUT / 'orbit' / today / 'official_links.txt'
+        missing_official = []
+        document = official.read_text() if official.exists() and session == 'mega' else None
+        if document is None and session == 'mega':
+            attachment = next((m for m in msgs if m.id > close.id
+                               and m.date <= close.date + timedelta(minutes=2)
+                               and getattr(getattr(m, 'file', None), 'name', '') == 'links.txt'), None)
+            if attachment:
+                document = (await client.download_media(attachment, file=bytes)).decode('utf-8')
+        if document is not None:
+            ids = TWEET.findall(document)
+            own_id = own.rsplit('/', 1)[-1]
+            by_id = {item['id']: item for item in links}
+            if (today not in document.splitlines()[0] or not count
+                    or len(ids) != count or len(set(ids)) != count
+                    or ids.count(own_id) != 1):
+                raise RuntimeError('Moderator links file does not match this MEGA session')
+            missing_official = [tid for tid in ids if tid != own_id and tid not in by_id]
+            # Only act on links present both in the moderator file and in a
+            # Telegram message. Report any unmatched file link as unfinished.
+            links = [by_id[tid] for tid in ids if tid != own_id and tid in by_id]
+        elif not count or len(links) not in (count, count - 1):
             raise RuntimeError(f'Found {len(links)} topic links, but close notice says {count}')
         rows, drafts = draft_replies(links, today, dry, session)
         print(f'{session} {today}: {len(rows)} links, {len(drafts)} validated replies')
@@ -462,7 +483,11 @@ async def execute(client, mode, when, dry, slot_override=None):
                 transition(state, reaction_key, 'pending')
                 await telegram_react(client, chat, item['message_id'], '❤')
                 transition(state, reaction_key, 'done')
-        transition(state, f'{today}:{session}:complete', 'done')
+        if missing_official:
+            print(f'{session} {today}: {len(missing_official)} official links lack a visible Telegram message: {missing_official}')
+            transition(state, f'{today}:{session}:partial', 'done')
+        else:
+            transition(state, f'{today}:{session}:complete', 'done')
         return
 
     chat, topic = await group_and_topic(client, '10 LIKE SCROLL (10d mute)')
