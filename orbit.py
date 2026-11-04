@@ -151,7 +151,15 @@ def confirm_slot(mode, when):
     if mode == 'mega-post' and not 5 <= offset < 30:
         raise RuntimeError(f'{session} post is outside its submission window')
     if mode == 'mega-engage' and not 35 <= offset < 205:
-        raise RuntimeError(f'{session} engagement is outside its completion window')
+        # A session already underway may finish late after an interruption.
+        # Never start a fresh engagement outside the group's window.
+        prefix = f'{when.date().isoformat()}:{session}:'
+        state = load_state()
+        started = any(k.startswith(prefix) and k.endswith(':like') and v == 'done'
+                      for k, v in state.items())
+        if not (session == 'mega' and 205 <= offset < 360
+                and state.get(f'{prefix}posted') == 'done' and started):
+            raise RuntimeError(f'{session} engagement is outside its completion window')
     if mode == 'likes':
         like_slot(when)
 
@@ -676,9 +684,11 @@ async def main_async(mode, dry, scheduled=False):
         elif not scheduled:
             confirm_slot(mode, when)
         session, _ = mega_session(when)
-        if (scheduled and mode == 'mega-engage'
-                and load_state().get(f'{when.date().isoformat()}:{session}:complete') == 'done'):
-            return 0
+        if scheduled and mode == 'mega-engage':
+            state = load_state()
+            prefix = f'{when.date().isoformat()}:{session}:'
+            if state.get(prefix + 'complete') == 'done' or state.get(prefix + 'partial') == 'done':
+                return 0
         if scheduled and mode == 'likes' and not due_like_slots(when, load_state()) and not due_hourly_scroll_slots(when, load_state()):
             return 0
     missing = [name for name in ('TG_API_ID', 'TG_API_HASH', 'TG_PHONE', 'TWITTERAPI_KEY')

@@ -40,8 +40,16 @@ class OrbitTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 11, 30, tzinfo=orbit.IST))
         orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 14, 20, tzinfo=orbit.IST))
-        with self.assertRaises(RuntimeError):
+        with patch.object(orbit, 'load_state', return_value={}):
+            with self.assertRaises(RuntimeError):
+                orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 14, 25, tzinfo=orbit.IST))
+        with patch.object(orbit, 'load_state', return_value={
+            '2026-11-01:mega:posted': 'done',
+            '2026-11-01:mega:123:like': 'done',
+        }):
             orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 14, 25, tzinfo=orbit.IST))
+            with self.assertRaises(RuntimeError):
+                orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 17, 0, tzinfo=orbit.IST))
         self.assertEqual(orbit.like_slot(datetime(2026, 11, 1, 12, 59, tzinfo=orbit.IST)), 'likes-12')
         self.assertEqual(orbit.like_slot(datetime(2026, 11, 1, 13, 10, tzinfo=orbit.IST)), 'likes-13')
         with self.assertRaises(RuntimeError):
