@@ -24,11 +24,13 @@ class ScheduleTests(unittest.TestCase):
 
     def test_weekdays_and_proof(self):
         for day, topic in zip(range(2, 9), schedule.SLOTS):
-            post = {'type': topic, 'text': 'what would you check first?'}
+            post = {'type': topic, 'content_kind': 'opinion', 'text': 'what would you check first?'}
             if topic in daily.POST_TYPES_REQUIRING_PROOF:
                 with self.assertRaises(ValueError):
                     schedule.validate_post(post, f'2026-11-{day:02d}')
                 post['quote_tweet_url'] = 'https://x.com/source/status/123'
+                post['text'] += ' @source'
+                post['sources'] = [{'url': post['quote_tweet_url'], 'claim': 'test source', 'checked_at': '2026-01-01T00:00:00Z'}]
             schedule.validate_post(post, f'2026-11-{day:02d}')
         with self.assertRaises(ValueError):
             schedule.validate_post({'type': 'hot-take', 'text': 'my thought'}, '2026-11-01')
@@ -83,6 +85,7 @@ class ScheduleTests(unittest.TestCase):
             folder = root / 'out/scheduled/2026-11-02/daily'
             folder.mkdir(parents=True)
             pinned = schedule.scheduled_post('2026-11-02')
+            pinned['content_kind'] = 'opinion'
             (root / 'content/scheduled_posts').mkdir(parents=True)
             (root / 'content/scheduled_posts/2026-11-02.json').write_text(json.dumps(pinned))
             now = datetime(2026, 11, 2, 10, 0, tzinfo=schedule.IST)
@@ -103,7 +106,7 @@ class ScheduleTests(unittest.TestCase):
             now = datetime(2026, 11, 1, 10, 5, tzinfo=schedule.IST)
             with patch.object(schedule, 'ROOT', root), patch.object(daily, 'read_state', return_value={}), \
                  patch.object(daily, 'codex_draft_valid', return_value=False), patch.object(schedule, 'now_ist', return_value=now), \
-                 patch.object(schedule, 'generate', return_value={'type':'journey', 'text':'what are you watching next week?'}), \
+                 patch.object(schedule, 'generate', return_value={'type':'journey', 'content_kind':'journey', 'text':'what are you watching next week?'}), \
                  patch.object(schedule, 'checked', side_effect=lambda *a, **k: events.append('publish')), \
                  patch.object(schedule, 'push_draft', side_effect=lambda *a: events.append('backup')):
                 schedule.daily('2026-11-01', folder)

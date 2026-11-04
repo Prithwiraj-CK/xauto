@@ -8,7 +8,7 @@
 Inputs:
   out/post.json      {"type", "text", "quote_tweet_url"?, "images"?: [...], "note"?}  <-- today's post
                      Prefer quote_tweet_url when the post reacts to a specific tweet (QT, not screenshot).
-                     Use images only for non-tweet proofs (DexScreener charts, Meteora numbers, etc).
+                     Quote tweets can also carry authentic evidence images. See content/POST_SCHEMA.md.
   out/drafts.json    [{"id": "<tweet_id>", "author", "text", "reply"}, ...]  <-- replies to send
 
 Guards (hard rules):
@@ -30,6 +30,8 @@ import re
 import subprocess
 import sys
 import time
+import post_contract
+from post_publish import publish_post
 from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -56,7 +58,7 @@ REPLY_AI_TELLS = [
 # words we've been leaning on too hard — allowed at most once, flag the draft otherwise
 OVERUSED = {"lol": 1, "honestly": 1, "ngl": 1, "tbh": 1, "literally": 1, "basically": 1}
 # post types that MUST have proof (QT url or screenshot). Everything else can go pure personal.
-POST_TYPES_REQUIRING_PROOF = {"solana-viral", "polymarket", "meteora"}
+POST_TYPES_REQUIRING_PROOF = post_contract.PROOF_TOPICS
 
 
 def load_env():
@@ -180,41 +182,26 @@ def post_daily(dry):
     p = json.loads(POST.read_text())
     text = p.get("text", "")
     qt_url = p.get("quote_tweet_url") or ""
-    images = p.get("images") or ([p["image"]] if p.get("image") else [])
-    ptype = p.get("type", "")
-    if not text:
-        log("post.json has empty text, skip")
+    try:
+        post_contract.validate_post(p, ROOT)
+    except (ValueError, OSError) as error:
+        log(f"HARD RULE: {error}; refusing to post")
         return None
-    needs_proof = ptype in POST_TYPES_REQUIRING_PROOF
-    if needs_proof and not qt_url and not images:
-        log(f"HARD RULE: {ptype} needs proof (quote_tweet_url OR images), refusing")
-        return None
-    if qt_url and images:
-        log("HARD RULE: post has both quote_tweet_url and images; pick one (QT is preferred for tweet-reactions)")
-        return None
-    for img in images:
-        if not (ROOT / img).exists():
-            log(f"HARD RULE: proof image missing: {img}, refusing to post")
-            return None
+    images = post_contract.images_for(p)
     why = lint_post(text)
     if why:
         log(f"HARD RULE: post lint failed ({', '.join(why)}), refusing to post")
         return None
-    proof = f"QT {qt_url}" if qt_url else f"{len(images)} proof image{'s' if len(images)!=1 else ''}"
+    proof = f"QT {qt_url or 'none'}, {len(images)} proof images"
     log(f"post lint ok ({len(text)} chars, {proof})")
     if dry:
         log(f"[dry] would post: {text[:120]}...")
         return "DRY"
-    if qt_url:
-        r = run([sys.executable, "x_actions.py", "qt", qt_url, text])
-    else:
-        r = run([sys.executable, "x_actions.py", "tweet", text, *images])
-    log(r.stdout.strip())
-    if r.returncode != 0 or "post tweet success" not in r.stdout:
-        log(f"daily tweet FAILED: {r.stderr.strip()}")
+    try:
+        tid = publish_post(p, ROOT)
+    except (OSError, ValueError, RuntimeError, SystemExit) as error:
+        log(f"daily publication incomplete: {error}")
         return None
-    m = re.search(r"'tweet_id': '(\d+)'", r.stdout)
-    tid = m.group(1) if m else None
     if tid:
         url = f"https://x.com/{os.environ.get('X_BOT_USERNAME','SinClair_0000')}/status/{tid}"
         # update .env for TG engagement later

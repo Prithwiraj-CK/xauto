@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 
 import run_daily as rules
 import reply_queue
+import post_contract
 
 ROOT = Path(__file__).parent
 IST = ZoneInfo('Asia/Kolkata')
@@ -68,15 +69,7 @@ def validate_post(post, day):
         previous_day = (datetime.fromisoformat(day) - timedelta(days=1)).date().isoformat()
         if rules.read_state().get(previous_day, {}).get('post_type') == post['type']:
             raise ValueError('Breaking-news override repeats yesterday’s topic type')
-    qt, images = post.get('quote_tweet_url'), post.get('images') or []
-    if qt and images:
-        raise ValueError('Choose quote tweet or image proof')
-    if post['type'] in rules.POST_TYPES_REQUIRING_PROOF and not (qt or images):
-        raise ValueError('This topic requires proof')
-    if qt and not re.fullmatch(r'https://(?:www\.)?(?:x|twitter)\.com/[^/]+/status/\d+(?:\?[^\s]*)?', qt):
-        raise ValueError('Invalid source tweet URL')
-    if any(not (ROOT / image).is_file() for image in images):
-        raise ValueError('Missing proof image')
+    post_contract.validate_post(post, ROOT)
 
 
 def validate_replies(drafts, cap, candidates):

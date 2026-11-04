@@ -27,7 +27,7 @@ a market-wide event), cover it that day instead and shift the rest. Overrides mu
   (posts with the most arguing in the replies) to find what people are already fighting about.
 - Naming an influencer or project is fine when the post is about **what they publicly said or did**.
 - "Exposing" needs **public receipts**: on-chain data, their own posts, published reports. Say what the receipt is
-  and put the link in a reply (`note`). If you can't point to proof, frame it as an opinion or a question.
+  and put the link in an actual `source_reply` (a `note` is internal only). If you can't point to proof, frame it as an opinion or a question.
 - Never: made-up facts, accusing anyone of scams or crimes without solid public evidence, private individuals,
   personal attacks on looks/identity, calls to harass. Punch at public figures and products, not people's lives.
 - Strong opinion + one concrete reason + an invitation to argue ("change my mind", "who's actually defending this?").
@@ -37,8 +37,8 @@ a market-wide event), cover it that day instead and shift the rest. Overrides mu
 - Best angles: the crowd vs the news, odds that moved fast, a market that says something about crypto/Solana.
 
 ## What gets reach in this niche (from ~1,100 2026 DLMM tweets + this week's trends)
-- **Questions and A/B choices get the most replies**; replies are the strongest reach signal.
-  End most non-research posts with a real question.
+- **Questions and A/B choices can invite substantive replies**; choose them when they fit the finding.
+  A question should be specific and worth answering; never add one only to farm replies.
 - **Journey, hot takes and real results beat pool calls.** Plain pool calls are among the weakest
   formats; keep them to the 2 research days and make them about *what I'm checking*.
 - **First line = the hook**, under ~10 words, a claim or a number. "most LPs lose money on the wrong
@@ -50,12 +50,11 @@ a market-wide event), cover it that day instead and shift the rest. Overrides mu
   token/MET data nobody else points out.
 - **Length**: most posts ~250 chars, short and punchy. `recap`, `teach` and `journey` can run up to ~600
   when the extra lines earn their place (max 700). Use line breaks; cut filler.
-- **One image whenever possible** (chart, screenshot, simple diagram). Say in `note` what image to attach
-  if it isn't the chart.
+- **One image whenever possible** (chart, screenshot, simple diagram). Attach the actual reviewed file with provenance as described in `content/POST_SCHEMA.md`.
 - **Tags**: @MeteoraAG / @met_lparmy only when it's genuinely about them, and credit the teacher whose idea
   you use (@EvilPanda etc.). ≤ 2 tags per post. Tags of people who'd actually engage beat big accounts.
 - **Avoid**: giveaway / "drop your wallet" / engagement-farm styles, shilling tokens, price predictions,
-  hashtags, links in the post (put a link in a reply instead; say so in `note`).
+  hashtags, links in the post (put source links in `source_reply`).
 
 ## Write like the creators people actually follow
 Measured on ~550 posts from top Meteora LPs (@EvilPanda, @crimexbt, @razzaer, @0xyunss, @SwannyDeFi,
@@ -139,3 +138,25 @@ pool-research (Tue/Fri):
 Getting the LP Army Private role: finished the LP Army Academy (DLMM mechanics, LP safety, charts,
 finding pools, position management, PnL), passed the practical quizzes and graduation task.
 Attach the Discord profile screenshot showing the roles.
+
+## Evidence and audience quality (applies to every future draft)
+
+Follow `content/POST_SCHEMA.md`. Each reaction must carry the actual original QT and
+verified @mention; factual investigations additionally need readable authentic image
+receipts. The publisher supports QT + images together. Save image provenance, credit,
+visual review and SHA256, and put links in the public source reply. Reject unsupported
+claims, ambiguous wallet attribution, misleading crops and stale evidence framed as new.
+One clear finding and a useful interpretation should carry the post. Do not manufacture
+outrage or make empty accusations for replies. Keep Solana/Meteora relevance and the
+existing weekday rhythm. Credit original investigations instead of implying we discovered them.
+
+Prioritize content the intended audience will read, share and discuss. Treat 3–6 posts
+per day, three-hour gaps, two-week account warmups and universal 48-hour expiry as
+unproven generalizations, not scheduling requirements. Keep the existing one-post daily
+schedule. The public X scoring code uses predicted viewer reactions, not raw engagement
+points. Review available history for relevant followers, profile interest and substantive
+questions as well as reach; do not invent unavailable metrics. Test one editorial change
+at a time. A followup should add a receipt, answer an objection or report a real update.
+
+Reference reviewed Nov 3, 2026: https://github.com/xai-org/x-algorithm and
+https://github.com/xai-org/x-algorithm/blob/main/xai-value-model/scoring.rs.

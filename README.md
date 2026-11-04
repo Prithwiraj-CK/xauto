@@ -126,3 +126,13 @@ Keep `TWITTERAPI_KEY`, `DISCORD_WEBHOOK_URL`, and `X_BOT_USERNAME` in the gitign
 - **First 30 min after each post**: reply to every comment. Early replies are the biggest reach signal.
 - **Wins**: post real PnL cards when you have one, with the setup. Occasionally post a loss.
 - **Engage**: use the reply drafts. No shilling in replies; your profile does that.
+
+## Proof and quote-tweet publishing
+
+`content/POST_SCHEMA.md` defines the required `content_kind`, sources, subject handles,
+image provenance and public `source_reply`. `post_contract.py` validates these in both
+scheduled and legacy manual publishing. `post_publish.py` sends quote URLs and images
+together, saves IDs before verification, and reads back actual tags, quote IDs, image
+counts and reply parents. Failed verification does not trigger an automatic repost.
+The existing daily times and weekday topics are unchanged. Evidence must be researched
+and visually reviewed; metadata checks cannot establish screenshot truth by themselves.

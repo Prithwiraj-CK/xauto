@@ -10,3 +10,9 @@ On Wednesday or Thursday, if choosing a Meteora pool research post:
 3. Use verified numbers from `out/chart_pool.json` and the authentic chart. Frame it as research, not a call to buy. Skip danger-rated pools for promotional research.
 
 The scheduler validates type, voice, length and proof; stamps today's date and exact post hash; calls `run_daily.py --post-only`; then commits and pushes the draft backup. Failed publication does not write a successful daily stamp. The four reply sessions run independently.
+
+Drafts also follow `content/POST_SCHEMA.md`. Publication accepts a QT with images,
+checks real @mentions and image provenance, then reads the live main tweet and source
+reply back. `out/publications/` retains IDs before verification. If verification fails,
+inspect that receipt and the existing post; never force a second publication. Uncertain
+writes block replacement drafts until reviewed. No live test posts are needed for code changes.

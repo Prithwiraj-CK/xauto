@@ -5,7 +5,7 @@
   python3 x_actions.py like <tweet_id>             -> $0.0006
   python3 x_actions.py reply <tweet_id> "text"     -> $0.0006
   python3 x_actions.py tweet "text" [img ...]      -> uploads each image ($0.0006), then posts the tweet ($0.0006)
-  python3 x_actions.py qt <tweet_url> "text"       -> quote-tweet the given tweet with text ($0.0006)
+  python3 x_actions.py qt <tweet_url> "text" [img ...] -> quote-tweet with optional evidence images
   python3 x_actions.py rt <tweet_id>               -> retweet ($0.0006)
 
 Safety rails: one login only (refuses to log in again while a cookie exists, unless --force), and a cross-job minimum gap
@@ -187,9 +187,11 @@ def cmd_tweet(text, images):
     act("create_tweet_v2", body)
 
 
-def cmd_qt(url, text):
+def cmd_qt(url, text, images=()):
     """Quote-tweet via attachment_url. url can be the full x.com/.../status/<id> URL."""
     body = {"tweet_text": text, "attachment_url": url}
+    if images:
+        body['media_ids'] = [upload_image(image) for image in images]
     if len(text) > 280:
         body["is_note_tweet"] = True
     act("create_tweet_v2", body)
@@ -211,8 +213,8 @@ def main():
         act("create_tweet_v2", {"tweet_text": args[2], "reply_to_tweet_id": args[1]})
     elif cmd == "tweet" and len(args) >= 2:
         cmd_tweet(args[1], args[2:])
-    elif cmd == "qt" and len(args) == 3:
-        cmd_qt(args[1], args[2])
+    elif cmd == "qt" and len(args) >= 3:
+        cmd_qt(args[1], args[2], args[3:])
     elif cmd == "rt" and len(args) == 2:
         cmd_rt(args[1])
     elif cmd == "status":
