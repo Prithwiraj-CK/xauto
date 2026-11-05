@@ -1,0 +1,17 @@
+[
+  {
+    "date": "2026-11-03",
+    "text": "hold-time rewards sound great until they stop.\n\ni'd be nervous LPing a coin where wallets are paid to wait. if holders sell when rewards end, the pool takes the other side.\n\nhow do you keep buyers around after the subsidy?",
+    "reason": "Same cautious narrator and closing-question formula."
+  },
+  {
+    "date": "2026-11-04",
+    "text": "4 pools, $6k in meteora rewards.\n\ni’d watch fee/TVL while the tickets roll in. if rewards pull in LPs faster than trading grows, each dollar of liquidity could earn less in fees.\n\nanyone tracking whether volume is keeping up with TVL?",
+    "reason": "Same cautious narrator and closing-question formula."
+  },
+  {
+    "date": "2026-11-05",
+    "text": "the zap matters before the first fee.\n\n@MeteoraAG added multi-hop to Ape In + Zap In. more routes could mean fewer failed entries. i'd still check the quoted output before signing. smoother routing doesn't promise a better fill.\n\nanyone tried it on a thin pair?",
+    "reason": "Owner explicitly rejected: opaque hook, announcement recap, routine caution, appended question."
+  }
+]

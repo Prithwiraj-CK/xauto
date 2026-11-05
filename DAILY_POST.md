@@ -2,7 +2,7 @@
 
 `com.sinclair.codex-draft` calls `run_codex_draft.sh` / `scheduled_run.py daily` at 9:15 AM IST to research today's weekday topic. It waits until 10:00 AM to publish, one hour before the selected MEGA ENGAGE session. The 9:45 and 10:00 AM retries skip dates already posted. A draft not ready by 10:15 AM is not published for that session.
 
-Codex follows `CODEX_DRAFT.md` and `content/PLAN.md`. It may refresh `history.py`, `trends.py`, and `style.py`, within the $0.10 total twitterapi.io research cap.
+Codex follows `CODEX_DRAFT.md`, `content/PLAN.md` and the writing authority `content/VOICE.md`. It may refresh `history.py`, `trends.py`, and `style.py`, within the $0.10 total twitterapi.io research cap.
 
 On Wednesday or Thursday, if choosing a Meteora pool research post:
 1. Run `python3 research.py scan` and inspect `out/pools.json`.
@@ -16,3 +16,8 @@ checks real @mentions and image provenance, then reads the live main tweet and s
 reply back. `out/publications/` retains IDs before verification. If verification fails,
 inspect that receipt and the existing post; never force a second publication. Uncertain
 writes block replacement drafts until reviewed. No live test posts are needed for code changes.
+
+The editorial pass must establish a contribution beyond the quoted source. The shared
+contract rejects stored bad examples and the repeated short-opener/cautious-narrator/
+audience-question formula before publication. These are regression checks, not a
+guarantee of natural writing. If no worthwhile supported angle fits, fail the draft.

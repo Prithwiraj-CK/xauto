@@ -31,6 +31,7 @@ import subprocess
 import sys
 import time
 import post_contract
+import post_voice
 from post_publish import publish_post
 from datetime import datetime, timezone
 from pathlib import Path
@@ -113,8 +114,8 @@ def codex_draft_valid(today, include_replies=True):
 
 
 def lint_post(text):
-    """Returns a list of reasons the text reads as AI; empty if clean."""
-    why = []
+    """Mechanical style checks only; passing does not establish editorial quality."""
+    why = post_voice.lint(text)
     low = text.lower()
     for t in POST_AI_TELLS:
         if t in low:

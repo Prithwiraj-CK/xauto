@@ -5,6 +5,8 @@ from pathlib import Path
 import re
 from urllib.parse import urlparse
 
+import post_voice
+
 KINDS = {'opinion', 'reaction', 'research', 'investigation', 'journey'}
 PROOF_TOPICS = {'solana-viral', 'meteora', 'polymarket'}
 TWEET_URL = re.compile(r'https://(?:www\.)?(?:x|twitter)\.com/([A-Za-z0-9_]{1,15})/status/(\d+)(?:\?[^\s]*)?')
@@ -84,6 +86,9 @@ def validate_post(post, root):
         raise ValueError('Post text is empty or over 700 characters')
     if re.search(r'\[[^\]]+\]', text):
         raise ValueError('Post contains an unfilled placeholder')
+    voice_errors = post_voice.lint(text)
+    if voice_errors:
+        raise ValueError('Editorial rejection: ' + '; '.join(voice_errors))
     kind = post.get('content_kind')
     if kind not in KINDS:
         raise ValueError('Declare content_kind: opinion, reaction, research, investigation or journey')

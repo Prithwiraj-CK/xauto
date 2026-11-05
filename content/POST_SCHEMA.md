@@ -7,10 +7,11 @@ as opinion to avoid proof checks. JSON `note` is internal and is never a source 
 
 ## Required review before saving a draft
 
-1. Pick one finding relevant to Solana, Meteora or the scheduled niche. Write a short
-   hook, the concrete evidence, and a personal interpretation or specific question.
-   Most posts should fit around 250 characters. Put transaction detail in the receipt
-   reply. Never invent a position, loss, conversation, wallet owner or first-hand discovery.
+1. Read `content/VOICE.md`. Pick one finding or concrete disagreement relevant to
+   Solana, Meteora or the scheduled niche. State the actual point without a required
+   slogan, first-person line or closing question. Most posts fit around 250 characters.
+   Put transaction detail in the receipt reply. Never invent a position, loss,
+   conversation, wallet owner or first-hand discovery.
 2. Read the original statement and primary evidence. Verify the handle through the
    original post/profile. Separate wallet links from wallet ownership, transfers from
    sales, reported allegations from verified findings, and selected examples from a full
@@ -38,7 +39,8 @@ as opinion to avoid proof checks. JSON `note` is internal and is never a source 
    below. The publisher checks the hash again before upload. It cannot itself prove that
    a screenshot is truthful: research and visual review are mandatory.
 7. `source_reply` is actual public text, up to 700 characters. Include image source links,
-   credits, material limitations and the event date. The publisher posts it under the
+   credits, material limitations and the event date when relevant. Avoid repeating the
+   main text or narrating the internal review. The publisher posts it under the
    main tweet and verifies its parent. Do not ask for a source reply only in `note`.
 
 ## JSON shape (illustrative placeholders, never publish them)
@@ -47,7 +49,7 @@ as opinion to avoid proof checks. JSON `note` is internal and is never a source 
 {
   "type": "hot-take",
   "content_kind": "investigation",
-  "text": "<short hook with @subject, attributed finding, specific question>",
+  "text": "<concrete finding or disagreement with @subject and attribution>",
   "subject_handles": ["subject"],
   "source_tweet_url": "https://x.com/subject/status/123",
   "quote_tweet_url": "https://x.com/subject/status/123",

@@ -55,8 +55,11 @@ def checked(cmd, **kw):
 
 def validate_post(post, day):
     text = post.get('text', '')
-    if not isinstance(text, str) or not text.strip() or len(text) > 700 or rules.lint_post(text):
-        raise ValueError('Post is empty, too long, or failed voice checks')
+    if not isinstance(text, str) or not text.strip() or len(text) > 700:
+        raise ValueError('Post is empty or too long')
+    voice_errors = rules.lint_post(text)
+    if voice_errors:
+        raise ValueError('Post failed voice checks: ' + '; '.join(voice_errors))
     if re.search(r'\[[^\]]+\]', text):
         raise ValueError('Post contains an unfilled placeholder')
     expected = SLOTS[datetime.fromisoformat(day).weekday()]

@@ -41,7 +41,9 @@ The documented breaking-news override requires a source URL and reason in `sched
 
 | file | what |
 |---|---|
-| `content/PLAN.md` | post types, mix, voice and rules: edit this to change what gets posted |
+| `content/PLAN.md` | weekday topics and evidence rules |
+| `content/VOICE.md` | writing authority and owner-rejected examples; overrides older voice templates |
+| `post_voice.py` | narrow editorial regression checks, enforced by the shared publication contract |
 | `content/teaching_bank.json` | evergreen teaching posts the drafter can use or adapt |
 | `knowledge/lp-notes.md` | LP Army Academy + Meteora notes for the drafter |
 | `research.py` | `scan` top pools (fee/TVL, volume, safety) · `chart <address>` → `out/chart.png` |
