@@ -1,6 +1,21 @@
 {
   "type": "meteora",
-  "text": "4 pools, $6k in meteora rewards.\n\ni\u2019d watch fee/TVL while the tickets roll in. if rewards pull in LPs faster than trading grows, each dollar of liquidity could earn less in fees.\n\nanyone tracking whether volume is keeping up with TVL?",
-  "quote_tweet_url": "https://x.com/MeteoraAG/status/2116741722957066465",
-  "note": "Quote Meteora\u2019s Nov 1 announcement of $6,000 in rewards across four eligible pools. The fee/TVL point is conditional, not a claim about these pools\u2019 actual returns. Source was captured in out/trends.json on Nov 3; live twitterapi.io refresh failed due to DNS."
+  "content_kind": "reaction",
+  "text": "the zap matters before the first fee.\n\n@MeteoraAG added multi-hop to Ape In + Zap In. more routes could mean fewer failed entries. i'd still check the quoted output before signing. smoother routing doesn't promise a better fill.\n\nanyone tried it on a thin pair?",
+  "subject_handles": [
+    "MeteoraAG"
+  ],
+  "source_tweet_url": "https://x.com/MeteoraAG/status/2118004648493924427",
+  "quote_tweet_url": "https://x.com/MeteoraAG/status/2118004648493924427",
+  "images": [],
+  "image_proof": [],
+  "sources": [
+    {
+      "url": "https://x.com/MeteoraAG/status/2118004648493924427",
+      "claim": "Meteora says Ape In and Zap In now support multi-hop routing through intermediate tokens, with better routing reliability, fewer errors, and potentially better swap rates.",
+      "checked_at": "2026-11-05T09:18:42+05:30"
+    }
+  ],
+  "source_reply": "Meteora announced this on Nov 4: https://x.com/MeteoraAG/status/2118004648493924427\n\nThe post says routing should be more reliable and rates may improve. It gives no before/after quotes or fill data. Checking the output before signing is my LP takeaway, not a measured result.",
+  "note": "Thursday Meteora news angle, distinct from Wednesday\u2019s rewards and fee/TVL post. Exact official author and statement verified via twitterapi.io single-tweet lookup on Nov 5 IST. No claimed personal test or measured fill improvement."
 }
