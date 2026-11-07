@@ -1,6 +1,6 @@
 # Daily post (1:00 PM IST)
 
-`com.sinclair.codex-draft` calls `run_codex_draft.sh` / `scheduled_run.py daily` at 11 AM IST to research today's weekday topic. It waits until 1 PM to publish. Retries at 1, 1:30, 2 and 2:30 PM skip dates already posted. A draft not ready by 2:45 PM is not published. The actual successful post time starts the five-hour 10 LIKE SCROLL window, followed by the 8 PM MEGA session when it opens.
+`com.sinclair.codex-draft` calls `run_codex_draft.sh` / `scheduled_run.py daily` at 11 AM IST to research today's weekday topic. An early draft releases the shared research lock; the 12:59 PM trigger waits briefly to publish at 1 PM. Retries at 1, 1:30, 2 and 2:30 PM skip dates already posted. A draft not ready by 2:45 PM is not published. The actual successful post time starts the five-hour 10 LIKE SCROLL window, followed by the 8 PM MEGA session when it opens.
 
 Codex follows `CODEX_DRAFT.md`, `content/PLAN.md` and the writing authority `content/VOICE.md`. It may refresh `history.py`, `trends.py`, and `style.py`, within the $0.10 total twitterapi.io research cap.
 

@@ -155,6 +155,11 @@ def daily(day, folder):
     validate_post(read_json(ROOT / 'out/post.json'), day)
     post_at = datetime.fromisoformat(day).replace(hour=DAILY_POST[0], minute=DAILY_POST[1], tzinfo=IST)
     remaining = (post_at - now_ist()).total_seconds()
+    if remaining > 60:
+        # Let the 1 PM reply session use the shared research lock. The 12:59
+        # launchd trigger will pick up this exact validated draft to publish.
+        print('Daily draft ready; awaiting the 12:59 PM publish trigger', flush=True)
+        return
     if remaining > 0:
         time.sleep(remaining)
     now = now_ist()

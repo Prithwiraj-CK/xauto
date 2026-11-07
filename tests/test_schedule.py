@@ -117,6 +117,23 @@ class ScheduleTests(unittest.TestCase):
             self.assertEqual(events, ['publish', 'backup'])
             self.assertEqual(json.loads((root / 'out/draft_state.json').read_text())['drafted_for'], '2026-11-01')
 
+    def test_early_draft_releases_lock_before_one_pm(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); folder = root / 'out/scheduled/2026-11-01/daily'; folder.mkdir(parents=True)
+            now = datetime(2026, 11, 1, 11, 30, tzinfo=schedule.IST)
+            with patch.object(schedule, 'ROOT', root), patch.object(daily, 'read_state', return_value={}), \
+                 patch.object(daily, 'codex_draft_valid', return_value=False), \
+                 patch.object(schedule, 'now_ist', return_value=now), \
+                 patch.object(schedule, 'generate', return_value={
+                     'type': 'journey', 'content_kind': 'journey',
+                     'text': 'what are you watching next week?'}), \
+                 patch.object(schedule, 'checked') as publish, \
+                 patch.object(schedule.time, 'sleep') as sleep:
+                schedule.daily('2026-11-01', folder)
+            publish.assert_not_called()
+            sleep.assert_not_called()
+            self.assertTrue((root / 'out/post.json').exists())
+
     def test_dry_run_does_not_call_spend_api(self):
         with patch.object(daily, 'load_env'), patch.object(daily, 'log'), patch.object(daily, 'read_state', return_value={}), \
              patch.object(daily, 'spend_start') as spend, patch.object(daily, 'post_daily', return_value='DRY'), \
