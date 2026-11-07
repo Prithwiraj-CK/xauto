@@ -6,23 +6,23 @@
 
 | Job | Time | Work |
 |---|---|---|
-| MEGA submission | 11:05–11:30 AM | Share today's 10 AM Sinclair tweet once in the MEGA ENGAGE topic. The worker checks every five minutes. |
-| MEGA engagement | 11:35 AM–2:25 PM | After the close notice, read that session's links, like and write a specific reply of at least four words to each post, then react to each Telegram message. The worker resumes incomplete work every five minutes. |
-| 10 LIKE SCROLL | 7 AM, noon, 1 PM, 5 PM, 10 PM | Like the latest ten other people's links, react on their Telegram messages, then share Sinclair's tweet. The 7 AM cycle uses yesterday's tweet; later cycles require today's 10 AM tweet. Each cycle has a two-hour retry window. |
+| MEGA submission | 8:05–8:30 PM | After the scroll window, share today's Sinclair tweet once if the 8 PM session has opened. The worker checks every five minutes. |
+| MEGA engagement | 8:35–11:30 PM | After the close notice, read that session's moderator link file, like and write a specific reply of at least four words to each visible post, then react to each Telegram message. The worker resumes incomplete work every five minutes. |
+| 10 LIKE SCROLL | From the successful daily post for five hours | Start immediately after the post, then check every five minutes. On the first cycle, like and react to the latest ten other people's links before sharing Sinclair's tweet. Repeat only after ten new links appear after the last share. |
 
 Actions are serialized and checkpointed in `out/orbit_state.json`. An uncertain like is retried because liking an already liked tweet is safe; an uncertain reply or Telegram post still stops for inspection to avoid a duplicate. The bot never automatically logs in to X again. It keeps a fixed snapshot of each 10 LIKE cycle's ten links so a retry works on the same posts. A failure sends a Discord alert, throttled to once per error every 30 minutes, while the local worker keeps checking. The bot does not invent a reply or mark an uncompleted action done. The group may reject repeated links, even though this schedule shares a link in every 10 LIKE run as requested.
 
-The noon and 1 PM 10 LIKE runs have separate completion keys. During their overlapping retry windows, the worker finishes the older incomplete cycle first. The Mac must remain awake and online for punctual execution; platform errors and moderation decisions can still prevent completion or cause warnings.
+Each scroll cycle has a separate completion key based on the preceding Sinclair share. The Mac must remain awake and online for punctual execution; platform errors and moderation decisions can still prevent completion or cause warnings.
 
 Before enabling jobs, set up Telegram interactively with `python3 tg_setup.py` (needs Telegram API ID/hash and phone confirmation). Then run `python3 orbit.py check`; it verifies both topics against Telegram. Test each mode during its window with `--dry`, then run `zsh install_orbit.sh` to install and load the three launchd jobs. Chrome's Telegram login alone is insufficient for unattended launchd runs. The Mac must be awake, logged in, and online.
 
-At **9:15 AM IST**, `com.sinclair.codex-draft` runs Codex to research **today's** topic and validate the draft. It publishes at **10:00 AM IST** through twitterapi.io, one hour before the selected 11 AM MEGA ENGAGE session. The 9:45 and 10:00 AM retries skip dates already posted; a draft not ready before 10:15 AM is not published for that session. It uses `CODEX_DRAFT.md` and the weekly plan in `content/PLAN.md`.
+At **11 AM IST**, `com.sinclair.codex-draft` runs Codex to research **today's** topic and validate the draft. It targets **1 PM IST** for publication through twitterapi.io. Retries at 1, 1:30, 2 and 2:30 PM skip dates already posted; a draft not ready before 2:45 PM is not published. The five-hour scroll window starts from the actual successful post time. It uses `CODEX_DRAFT.md` and the weekly plan in `content/PLAN.md`.
 
 Separate Codex reply sessions run at **1 PM, 3 PM, 8 PM and 11 PM IST** (`com.sinclair.codex-replies`). They follow `CODEX_REPLIES.md` and `REPLY_GUIDE.md`: up to 10 replies at 1 PM and up to 3 at each other session; fewer or zero are fine. There is no extra five-reply batch attached to the daily post. Per-session drafts are stored under `out/scheduled/YYYY-MM-DD/replies-HH/`.
 
 Replies go into a durable shared SQLite queue. `com.sinclair.reply-worker` checks it every five minutes, sends at random 30–60 minute intervals, prevents duplicate source IDs, and resumes queued work after restart. Failed items are retained as failed for inspection. The old Claude schedules remain paused. Discord receives summaries only.
 
-The Mac must be awake, logged in and online for punctual execution. On wake, drafting uses the current IST date and only publishes during the 10:00–10:15 AM window.
+The Mac must be awake, logged in and online for punctual execution. On wake, drafting uses the current IST date and only publishes during the 1:00–2:45 PM window.
 
 | Day | Research and post topic |
 |---|---|
@@ -136,5 +136,5 @@ image provenance and public `source_reply`. `post_contract.py` validates these i
 scheduled and legacy manual publishing. `post_publish.py` sends quote URLs and images
 together, saves IDs before verification, and reads back actual tags, quote IDs, image
 counts and reply parents. Failed verification does not trigger an automatic repost.
-The existing daily times and weekday topics are unchanged. Evidence must be researched
+The weekday topics are unchanged. Evidence must be researched
 and visually reviewed; metadata checks cannot establish screenshot truth by themselves.

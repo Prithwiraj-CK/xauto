@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] if Path(__file__).parent.name == 'tests' else Path(__file__).parent))
 import scheduled_run as schedule
@@ -14,9 +15,10 @@ import run_daily as daily
 
 
 class ScheduleTests(unittest.TestCase):
-    def test_morning_post_window_and_wake_boundaries(self):
-        for hour, minute, expected in [(9, 0, None), (9, 15, 'daily'), (10, 0, 'daily'),
-                                       (10, 14, 'daily'), (10, 15, None), (21, 31, None)]:
+    def test_afternoon_post_window_and_wake_boundaries(self):
+        for hour, minute, expected in [(10, 59, None), (11, 0, 'daily'),
+                                       (13, 0, 'daily'), (14, 44, 'daily'),
+                                       (14, 45, None), (21, 31, None)]:
             now = datetime(2026, 11, 1, hour, minute, tzinfo=schedule.IST)
             self.assertEqual(schedule.session('daily', now), expected)
         for hour, expected in [(12, None), (13, 'replies-13'), (16, 'replies-15'), (20, 'replies-20'), (23, 'replies-23')]:
@@ -88,12 +90,13 @@ class ScheduleTests(unittest.TestCase):
             pinned['content_kind'] = 'opinion'
             (root / 'content/scheduled_posts').mkdir(parents=True)
             (root / 'content/scheduled_posts/2026-11-02.json').write_text(json.dumps(pinned))
-            now = datetime(2026, 11, 2, 10, 0, tzinfo=schedule.IST)
+            now = datetime(2026, 11, 2, 13, 0, tzinfo=schedule.IST)
             with patch.object(schedule, 'ROOT', root), patch.object(daily, 'read_state', return_value={}), \
                  patch.object(daily, 'codex_draft_valid', return_value=False), \
                  patch.object(schedule, 'now_ist', return_value=now), \
                  patch.object(schedule, 'generate') as generate, patch.object(schedule, 'checked') as checked, \
-                 patch.object(schedule, 'push_draft'):
+                 patch.object(schedule, 'push_draft'), \
+                 patch.object(schedule.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
                 schedule.daily('2026-11-02', folder)
                 generate.assert_not_called()
                 checked.assert_called_once_with([sys.executable, 'run_daily.py', '--post-only'])
@@ -103,12 +106,13 @@ class ScheduleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp); folder = root / 'out/scheduled/2026-11-01/daily'; folder.mkdir(parents=True)
             events = []
-            now = datetime(2026, 11, 1, 10, 5, tzinfo=schedule.IST)
+            now = datetime(2026, 11, 1, 13, 5, tzinfo=schedule.IST)
             with patch.object(schedule, 'ROOT', root), patch.object(daily, 'read_state', return_value={}), \
                  patch.object(daily, 'codex_draft_valid', return_value=False), patch.object(schedule, 'now_ist', return_value=now), \
                  patch.object(schedule, 'generate', return_value={'type':'journey', 'content_kind':'journey', 'text':'what are you watching next week?'}), \
                  patch.object(schedule, 'checked', side_effect=lambda *a, **k: events.append('publish')), \
-                 patch.object(schedule, 'push_draft', side_effect=lambda *a: events.append('backup')):
+                 patch.object(schedule, 'push_draft', side_effect=lambda *a: events.append('backup')), \
+                 patch.object(schedule.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
                 schedule.daily('2026-11-01', folder)
             self.assertEqual(events, ['publish', 'backup'])
             self.assertEqual(json.loads((root / 'out/draft_state.json').read_text())['drafted_for'], '2026-11-01')

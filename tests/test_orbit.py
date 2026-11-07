@@ -30,80 +30,38 @@ class OrbitTests(unittest.TestCase):
             self.assertTrue(orbit.before_start_date(datetime(2026, 11, 1, 11, 5, tzinfo=orbit.IST)))
             self.assertFalse(orbit.before_start_date(datetime(2026, 11, 2, 7, 0, tzinfo=orbit.IST)))
 
-    def test_slot_boundaries(self):
-        for mode, hour, minute in [('mega-post', 11, 5), ('mega-engage', 11, 35),
-                                   ('likes', 7, 0), ('likes', 12, 0), ('likes', 13, 0),
-                                   ('likes', 14, 0), ('likes', 15, 15),
-                                   ('likes', 16, 10), ('likes', 17, 0),
-                                   ('likes', 18, 0), ('likes', 19, 10),
-                                   ('likes', 20, 0), ('likes', 21, 0),
-                                   ('likes', 22, 0), ('likes', 23, 0)]:
-            orbit.confirm_slot(mode, datetime(2026, 11, 1, hour, minute, tzinfo=orbit.IST))
+    def test_five_hour_scroll_and_eight_pm_mega_boundaries(self):
+        history = {'2026-11-01': {'post_tweet_id': '456',
+                   'posted_at': '2026-11-01T13:15:00+05:30'}}
+        with patch.object(orbit.run_daily, 'read_state', return_value=history):
+            for hour, minute in [(13, 15), (18, 14)]:
+                orbit.confirm_slot('likes', datetime(2026, 11, 1, hour, minute, tzinfo=orbit.IST))
+            for hour, minute in [(13, 14), (18, 15), (7, 0)]:
+                with self.assertRaises(RuntimeError):
+                    orbit.confirm_slot('likes', datetime(2026, 11, 1, hour, minute, tzinfo=orbit.IST))
+        orbit.confirm_slot('mega-post', datetime(2026, 11, 1, 20, 5, tzinfo=orbit.IST))
+        orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 20, 35, tzinfo=orbit.IST))
         with self.assertRaises(RuntimeError):
-            orbit.confirm_slot('mega-post', datetime(2026, 11, 1, 10, 59, tzinfo=orbit.IST))
+            orbit.confirm_slot('mega-post', datetime(2026, 11, 1, 20, 30, tzinfo=orbit.IST))
         with self.assertRaises(RuntimeError):
-            orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 11, 30, tzinfo=orbit.IST))
-        orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 14, 20, tzinfo=orbit.IST))
-        with patch.object(orbit, 'load_state', return_value={}):
-            with self.assertRaises(RuntimeError):
-                orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 14, 25, tzinfo=orbit.IST))
-        with patch.object(orbit, 'load_state', return_value={
-            '2026-11-01:mega:posted': 'done',
-            '2026-11-01:mega:123:like': 'done',
-        }):
-            orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 14, 25, tzinfo=orbit.IST))
-            with self.assertRaises(RuntimeError):
-                orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 17, 0, tzinfo=orbit.IST))
-        self.assertEqual(orbit.like_slot(datetime(2026, 11, 1, 12, 59, tzinfo=orbit.IST)), 'likes-12')
-        self.assertEqual(orbit.like_slot(datetime(2026, 11, 1, 13, 10, tzinfo=orbit.IST)), 'likes-13')
-        self.assertEqual(orbit.like_slot(datetime(2026, 11, 1, 15, 0, tzinfo=orbit.IST)), 'likes-14')
-        with self.assertRaises(RuntimeError):
-            orbit.like_slot(datetime(2026, 11, 1, 11, 0, tzinfo=orbit.IST))
+            orbit.confirm_slot('mega-engage', datetime(2026, 11, 1, 20, 30, tzinfo=orbit.IST))
 
-    def test_overlapping_like_slots_keep_unfinished_noon_cycle(self):
-        when = datetime(2026, 11, 1, 13, 10, tzinfo=orbit.IST)
-        self.assertEqual(orbit.due_like_slots(when, {}), ['likes-12', 'likes-13'])
-        state = {'2026-11-01:likes-12:complete': 'done'}
-        self.assertEqual(orbit.due_like_slots(when, state), ['likes-13'])
+    def test_post_window_requires_success_timestamp(self):
+        when = datetime(2026, 11, 1, 13, 0, tzinfo=orbit.IST)
+        with patch.object(orbit.run_daily, 'read_state', return_value={'2026-11-01': {'post_tweet_id': '456'}}):
+            self.assertIsNone(orbit.post_scroll_window(when))
 
-    def test_new_scroll_times_recur_on_future_days(self):
-        expected = ['likes-07', 'likes-12', 'likes-13', 'likes-14',
-                    'likes-1515', 'likes-1610', 'likes-17', 'likes-18',
-                    'likes-1910', 'likes-20', 'likes-21', 'likes-22', 'likes-23']
-        with tempfile.TemporaryDirectory() as temp, \
-             patch.object(orbit, 'SPECIAL', Path(temp) / 'special.json'):
-            for day in (4, 5, 9):
-                when = datetime(2026, 11, day, 12, 0, tzinfo=orbit.IST)
-                self.assertEqual(list(orbit.scroll_slots(when)), expected)
-
-    def test_one_day_post_override_and_extra_sessions_expire(self):
+    def test_one_day_extra_mega_session_expires(self):
         config = {'date': '2026-11-02',
                   'url': 'https://x.com/SinClair_0000/status/2117164586495615402',
-                  'extra_mega_hour': 16,
-                  'scroll_retry_minutes': 240,
-                  'extra_scroll_times': ['14:30', '16:00', '18:00', '20:00']}
+                  'extra_mega_hour': 16}
         with tempfile.TemporaryDirectory() as temp, \
              patch.object(orbit, 'SPECIAL', Path(temp) / 'special.json'):
             orbit.SPECIAL.write_text(json.dumps(config))
-            afternoon = datetime(2026, 11, 2, 14, 30, tzinfo=orbit.IST)
-            self.assertEqual(orbit.scroll_post(afternoon, 'likes-1430'),
-                             ('2026-11-02', config['url']))
-            self.assertIn('likes-1430', orbit.due_like_slots(afternoon, {}))
-            self.assertIn('likes-12', orbit.due_like_slots(afternoon, {}))
-            self.assertEqual(orbit.due_like_slots(datetime(2026, 11, 2, 17, 0,
-                             tzinfo=orbit.IST), {}),
-                             ['likes-14', 'likes-1430', 'likes-1515',
-                              'likes-1600', 'likes-1610', 'likes-17'])
             self.assertEqual(orbit.mega_session(datetime(2026, 11, 2, 16, 5,
                              tzinfo=orbit.IST)), ('mega-16', 16))
-            orbit.confirm_slot('mega-post', datetime(2026, 11, 2, 16, 5,
-                               tzinfo=orbit.IST))
-            orbit.confirm_slot('mega-engage', datetime(2026, 11, 2, 16, 35,
-                               tzinfo=orbit.IST))
-            tomorrow = datetime(2026, 11, 3, 14, 30, tzinfo=orbit.IST)
-            self.assertNotIn('likes-1430', orbit.due_like_slots(tomorrow, {}))
             self.assertEqual(orbit.mega_session(datetime(2026, 11, 3, 16, 5,
-                             tzinfo=orbit.IST)), ('mega', 11))
+                             tzinfo=orbit.IST)), ('mega-20', 20))
 
     def test_hourly_scroll_uses_ten_new_links_after_latest_own_share(self):
         def msg(mid, author, tweet_id, out=False):
@@ -123,7 +81,7 @@ class OrbitTests(unittest.TestCase):
         self.assertEqual([x['message_id'] for x in orbit.latest_links_since_anchor(newer, 3, 'SinClair_0000')],
                          [16] + list(range(14, 5, -1)))
 
-    def test_backlogged_scroll_uses_new_link_guard_before_sharing_again(self):
+    def test_rolling_scroll_uses_latest_share_as_next_anchor(self):
         url = 'https://x.com/SinClair_0000/status/999'
         own = SimpleNamespace(id=42, out=True, message=url)
         when = datetime(2026, 11, 2, 14, 30, tzinfo=orbit.IST)
@@ -131,26 +89,98 @@ class OrbitTests(unittest.TestCase):
                           return_value=('chat', SimpleNamespace(id=1))), \
              patch.object(orbit, 'messages_in_topic', new_callable=AsyncMock,
                           return_value=[own]), \
-             patch.object(orbit, 'scroll_post', return_value=('2026-11-02', url)), \
+             patch.object(orbit, 'post_scroll_window', return_value=(
+                 datetime(2026, 11, 2, 13, 0, tzinfo=orbit.IST),
+                 datetime(2026, 11, 2, 18, 0, tzinfo=orbit.IST), url)), \
              patch.object(orbit, 'execute_hourly_scroll', new_callable=AsyncMock) as guarded:
-            asyncio.run(orbit.execute(None, 'likes', when, False, slot_override='likes-1430'))
-            guarded.assert_awaited_once_with(None, when, False, slot_override='likes-1430')
+            asyncio.run(orbit.execute_post_scroll(None, when, False))
+            guarded.assert_awaited_once_with(None, when, False,
+                slot_override='after-42', window_end=datetime(2026, 11, 2, 18, 0,
+                                                              tzinfo=orbit.IST))
 
-    def test_seven_am_repeated_share_uses_yesterdays_tweet(self):
+    def test_rolling_scroll_waits_for_ten_new_links(self):
         url = 'https://x.com/SinClair_0000/status/999'
-        when = datetime(2026, 11, 4, 7, 0, tzinfo=orbit.IST)
+        when = datetime(2026, 11, 4, 14, 0, tzinfo=orbit.IST)
         own = SimpleNamespace(id=42, out=True, message=url,
-                              date=datetime(2026, 11, 3, 22, 0, tzinfo=orbit.IST))
+                              date=datetime(2026, 11, 4, 13, 30, tzinfo=orbit.IST))
+        links = [SimpleNamespace(id=i, out=False,
+                 message=f'https://x.com/user{i}/status/{100+i}') for i in range(43, 52)]
         with tempfile.TemporaryDirectory() as temp, \
              patch.object(orbit, 'OUT', Path(temp)), \
              patch.object(orbit, 'load_state', return_value={}), \
-             patch.object(orbit, 'scroll_post', return_value=('2026-11-03', url)), \
+             patch.object(orbit, 'post_scroll_window', return_value=(
+                 datetime(2026, 11, 4, 13, 0, tzinfo=orbit.IST),
+                 datetime(2026, 11, 4, 18, 0, tzinfo=orbit.IST), url)), \
              patch.object(orbit, 'group_and_topic', new_callable=AsyncMock,
                           return_value=('chat', SimpleNamespace(id=1, closed=False))), \
              patch.object(orbit, 'messages_in_topic', new_callable=AsyncMock,
-                          return_value=[own]):
+                          return_value=[own] + links), \
+             patch.object(orbit, 'ensure_like') as like:
             asyncio.run(orbit.execute_hourly_scroll(None, when, False,
-                                                    slot_override='likes-07'))
+                                                    slot_override='after-42'))
+            like.assert_not_called()
+
+    def test_rolling_cycle_likes_reacts_and_shares_once(self):
+        url = 'https://x.com/SinClair_0000/status/999'
+        when = datetime(2026, 11, 4, 14, 0, tzinfo=orbit.IST)
+        own = SimpleNamespace(id=42, out=True, message=url,
+                              date=datetime(2026, 11, 4, 13, 30, tzinfo=orbit.IST))
+        links = [SimpleNamespace(id=i, out=False,
+                 message=f'https://x.com/user{i}/status/{100+i}') for i in range(43, 53)]
+        client = AsyncMock()
+        client.send_message.return_value = SimpleNamespace(id=53)
+        with tempfile.TemporaryDirectory() as temp, \
+             patch.object(orbit, 'OUT', Path(temp)), \
+             patch.object(orbit, 'STATE', Path(temp) / 'state.json'), \
+             patch.object(orbit, 'post_scroll_window', return_value=(
+                 datetime(2026, 11, 4, 13, 0, tzinfo=orbit.IST),
+                 datetime(2026, 11, 4, 18, 0, tzinfo=orbit.IST), url)), \
+             patch.object(orbit, 'now_ist', return_value=when), \
+             patch.object(orbit, 'group_and_topic', new_callable=AsyncMock,
+                          return_value=('chat', SimpleNamespace(id=1, closed=False))), \
+             patch.object(orbit, 'messages_in_topic', new_callable=AsyncMock,
+                          return_value=[own] + links), \
+             patch.object(orbit, 'ensure_like',
+                          side_effect=lambda state, key, tid: state.update({key: 'done'})) as like, \
+             patch.object(orbit, 'telegram_react', new_callable=AsyncMock) as react:
+            asyncio.run(orbit.execute_hourly_scroll(client, when, False,
+                                                    slot_override='after-42',
+                                                    window_end=datetime(2026, 11, 4, 18, 0,
+                                                                        tzinfo=orbit.IST)))
+            asyncio.run(orbit.execute_hourly_scroll(client, when, False,
+                                                    slot_override='after-42',
+                                                    window_end=datetime(2026, 11, 4, 18, 0,
+                                                                        tzinfo=orbit.IST)))
+            self.assertEqual(like.call_count, 10)
+            self.assertEqual(react.await_count, 10)
+            client.send_message.assert_awaited_once_with('chat', url, reply_to=1,
+                                                          link_preview=False)
+            state = json.loads((Path(temp) / 'state.json').read_text())
+            self.assertEqual(state['2026-11-04:after-42:complete'], 'done')
+            self.assertEqual(state['2026-11-04:scroll:last_anchor'], 53)
+
+    def test_uncertain_scroll_share_blocks_reposting(self):
+        with self.assertRaises(RuntimeError):
+            orbit.assert_no_uncertain_scroll_share({
+                '2026-11-04:post-start:posted': 'pending'}, '2026-11-04')
+        with self.assertRaises(RuntimeError):
+            orbit.assert_no_uncertain_scroll_share({
+                '2026-11-04:after-42:posted': 'pending'}, '2026-11-04')
+
+    def test_mega_submission_waits_for_live_session_links(self):
+        url = 'https://x.com/SinClair_0000/status/999'
+        when = datetime(2026, 11, 4, 20, 5, tzinfo=orbit.IST)
+        client = AsyncMock()
+        with patch.object(orbit, 'post_scroll_window', return_value=(
+                 datetime(2026, 11, 4, 13, 0, tzinfo=orbit.IST),
+                 datetime(2026, 11, 4, 18, 0, tzinfo=orbit.IST), url)), \
+             patch.object(orbit, 'posted_tweet_before', return_value=('2026-11-04', url)), \
+             patch.object(orbit, 'group_and_topic', new_callable=AsyncMock,
+                          return_value=('chat', SimpleNamespace(id=1, closed=False))), \
+             patch.object(orbit, 'messages_in_topic', new_callable=AsyncMock,
+                          return_value=[]):
+            asyncio.run(orbit.execute(client, 'mega-post', when, False))
+        client.send_message.assert_not_awaited()
 
     def test_regular_scroll_recheck_replaces_oldest_link_when_new_one_arrives(self):
         def msg(mid, author):
@@ -162,24 +192,18 @@ class OrbitTests(unittest.TestCase):
         self.assertEqual([x['message_id'] for x in orbit.latest_scroll_links(with_new, 'SinClair_0000')],
                          [12] + list(range(10, 1, -1)))
 
-    def test_hourly_scroll_expires_after_configured_date(self):
-        with tempfile.TemporaryDirectory() as temp, patch.object(orbit, 'HOURLY_SCROLL', Path(temp) / 'hourly.json'):
-            orbit.HOURLY_SCROLL.write_text(json.dumps({'date': '2026-11-01',
-                                                        'hours': [19, 20, 21, 22, 23]}))
-            self.assertEqual(orbit.hourly_scroll_slot(datetime(2026, 11, 1, 19, 0, tzinfo=orbit.IST)), 'scroll-19')
-            self.assertEqual(orbit.hourly_scroll_slot(datetime(2026, 11, 1, 22, 0, tzinfo=orbit.IST)), 'likes-22')
-            self.assertIsNone(orbit.hourly_scroll_slot(datetime(2026, 11, 2, 19, 0, tzinfo=orbit.IST)))
-            self.assertEqual(orbit.due_hourly_scroll_slots(datetime(2026, 11, 1, 20, 0, tzinfo=orbit.IST), {}),
-                             ['scroll-19', 'scroll-20'])
-            self.assertEqual(orbit.due_hourly_scroll_slots(datetime(2026, 11, 1, 20, 0, tzinfo=orbit.IST),
-                             {'2026-11-01:scroll-19:complete': 'done'}), ['scroll-20'])
+    def test_no_scroll_action_after_five_hour_cutoff(self):
+        end = datetime(2026, 11, 1, 18, 0, tzinfo=orbit.IST)
+        with patch.object(orbit, 'now_ist', return_value=end):
+            with self.assertRaises(orbit.ScrollWindowEnded):
+                orbit.require_scroll_time(end)
 
     def test_official_mega_file_engages_only_visible_links_and_marks_partial(self):
-        when = datetime(2026, 11, 4, 12, 0, tzinfo=orbit.IST)
-        date = datetime(2026, 11, 4, 5, 40, tzinfo=timezone.utc)
+        when = datetime(2026, 11, 4, 20, 40, tzinfo=orbit.IST)
+        date = datetime(2026, 11, 4, 14, 40, tzinfo=timezone.utc)
         own_url = 'https://x.com/SinClair_0000/status/1'
-        close_date = datetime(2026, 11, 4, 6, 0, tzinfo=timezone.utc)
-        document = ('2026-11-04 06:00 UTC\n' + own_url +
+        close_date = datetime(2026, 11, 4, 15, 0, tzinfo=timezone.utc)
+        document = ('2026-11-04 15:00 UTC\n' + own_url +
                     '\nhttps://x.com/member/status/2\nhttps://x.com/missing/status/3\n')
         messages = [SimpleNamespace(id=5, date=close_date, message='',
                                     file=SimpleNamespace(name='links.txt')),
@@ -190,6 +214,7 @@ class OrbitTests(unittest.TestCase):
         client.download_media.return_value = document.encode()
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
+            (root / 'state.json').write_text(json.dumps({'2026-11-04:mega-20:posted': 'done'}))
             with patch.object(orbit, 'OUT', root), \
                  patch.object(orbit, 'STATE', root / 'state.json'), \
                  patch.object(orbit, 'group_and_topic', new_callable=AsyncMock,
@@ -209,17 +234,14 @@ class OrbitTests(unittest.TestCase):
             reply.assert_called_once()
             react.assert_awaited_once()
             state = json.loads((root / 'state.json').read_text())
-            self.assertEqual(state['2026-11-04:mega:partial'], 'done')
-            self.assertNotIn('2026-11-04:mega:complete', state)
+            self.assertEqual(state['2026-11-04:mega-20:partial'], 'done')
+            self.assertNotIn('2026-11-04:mega-20:complete', state)
 
-    def test_morning_mega_uses_same_day_post(self):
+    def test_evening_mega_uses_same_day_post(self):
         history = {'2026-10-31': {'post_tweet_id': '123'},
                    '2026-11-01': {'post_tweet_id': '456'}}
         with patch.object(orbit.run_daily, 'read_state', return_value=history):
-            day, url = orbit.posted_tweet_before(datetime(2026, 11, 1, 7, 0, tzinfo=orbit.IST))
-            self.assertEqual(day, '2026-10-31')
-            self.assertTrue(url.endswith('/123'))
-            day, url = orbit.posted_tweet_before(datetime(2026, 11, 1, 11, 5, tzinfo=orbit.IST))
+            day, url = orbit.posted_tweet_before(datetime(2026, 11, 1, 20, 5, tzinfo=orbit.IST))
             self.assertEqual(day, '2026-11-01')
             self.assertTrue(url.endswith('/456'))
 

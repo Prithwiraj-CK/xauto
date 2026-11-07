@@ -275,6 +275,8 @@ def main():
                 webhook("Daily post failed; no success stamp written. See out/run_daily.log.")
             return 1
         done["post_tweet_id"] = tid
+        if tid != "DRY":
+            done["posted_at"] = datetime.now(ZoneInfo("Asia/Kolkata")).isoformat()
         done["post_type"] = json.loads(POST.read_text()).get("type") if POST.exists() else None
     if not args.post_only:
         n = queue_replies(args.dry)

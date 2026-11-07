@@ -21,9 +21,10 @@ ROOT = Path(__file__).parent
 IST = ZoneInfo('Asia/Kolkata')
 SLOTS = ['solana-viral', 'hot-take', 'meteora', 'meteora', 'polymarket', 'hot-take', 'journey']
 REPLY_HOURS = (13, 15, 20, 23)
-DAILY_PREP = (9, 15)
-DAILY_POST = (10, 0)
-DAILY_DEADLINE = (10, 15)
+DAILY_PREP = (11, 0)
+DAILY_POST = (13, 0)
+# A late successful post must still leave five hours before the 8 PM MEGA slot.
+DAILY_DEADLINE = (14, 45)
 
 
 def now_ist():
@@ -32,7 +33,7 @@ def now_ist():
 
 def session(mode, now):
     if mode == 'daily':
-        # Prepare before 10 AM, but never publish a missed post after the slot.
+        # Research ahead of 1 PM; retry a missed post only before the cutoff.
         return 'daily' if DAILY_PREP <= (now.hour, now.minute) < DAILY_DEADLINE else None
     hours = [hour for hour in REPLY_HOURS if hour <= now.hour]
     return f'replies-{max(hours):02d}' if hours else None
@@ -158,8 +159,15 @@ def daily(day, folder):
         time.sleep(remaining)
     now = now_ist()
     if now.date().isoformat() != day or (now.hour, now.minute) >= DAILY_DEADLINE:
-        raise RuntimeError('Daily draft missed the 10:00–10:15 AM IST posting window')
+        raise RuntimeError('Daily draft missed the 1:00–2:45 PM IST posting window')
     checked([sys.executable, 'run_daily.py', '--post-only'])
+    # The post stamp is now durable. Wake the scroll worker immediately;
+    # its five-minute timer remains the fallback if launchctl is unavailable.
+    wake = subprocess.run(['launchctl', 'kickstart',
+                           f'gui/{os.getuid()}/com.sinclair.orbit-likes'],
+                          cwd=ROOT, capture_output=True, text=True)
+    if wake.returncode:
+        print('Could not wake Orbit scroll worker; its timer will retry', flush=True)
     push_draft(day)
     save_json(folder / 'backed_up.json', {'done': True})
 

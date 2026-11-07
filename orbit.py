@@ -30,16 +30,10 @@ import scheduled_run
 ROOT = Path(__file__).parent
 OUT = ROOT / 'out'
 STATE = OUT / 'orbit_state.json'
-HOURLY_SCROLL = OUT / 'orbit_hourly_scroll.json'
 SPECIAL = OUT / 'orbit_special.json'
 IST = ZoneInfo('Asia/Kolkata')
 GROUP = 'Engage-Orbit'
 TWEET = re.compile(r'https?://(?:www\.)?(?:x|twitter)\.com/[A-Za-z0-9_]+/status/(\d+)')
-SLOTS = {'likes-07': (7, 0), 'likes-12': (12, 0), 'likes-13': (13, 0),
-         'likes-14': (14, 0), 'likes-1515': (15, 15), 'likes-1610': (16, 10),
-         'likes-17': (17, 0), 'likes-18': (18, 0), 'likes-1910': (19, 10),
-         'likes-20': (20, 0), 'likes-21': (21, 0), 'likes-22': (22, 0),
-         'likes-23': (23, 0)}
 STOP_WORDS = {'about', 'after', 'again', 'could', 'from', 'have', 'just', 'more',
               'that', 'their', 'there', 'these', 'this', 'what', 'when', 'where',
               'which', 'with', 'would', 'your'}
@@ -94,11 +88,48 @@ def posted_tweet_before(when):
         item = history[day]
         if not item.get('post_tweet_id') or day > when.date().isoformat():
             continue
-        # The 7 AM cycle uses yesterday's tweet; later cycles use today's 10 AM post.
-        if day == when.date().isoformat() and when.hour < 10:
-            continue
         return day, f"https://x.com/{os.environ.get('X_BOT_USERNAME', 'SinClair_0000')}/status/{item['post_tweet_id']}"
     raise RuntimeError('No successful Sinclair daily post is available for this slot')
+
+
+def post_scroll_window(when):
+    """Only a stamped post from today opens a five-hour scroll window."""
+    item = run_daily.read_state().get(when.date().isoformat(), {})
+    tweet_id, raw = item.get('post_tweet_id'), item.get('posted_at')
+    if not tweet_id or not raw:
+        return None
+    start = datetime.fromisoformat(raw)
+    if start.tzinfo is None:
+        raise RuntimeError('Daily post timestamp has no timezone')
+    start = start.astimezone(IST)
+    if start.date() != when.date():
+        return None
+    url = f"https://x.com/{os.environ.get('X_BOT_USERNAME', 'SinClair_0000')}/status/{tweet_id}"
+    return start, start + timedelta(hours=5), url
+
+
+class ScrollWindowEnded(Exception):
+    """Stop a partially completed scroll without posting after its cutoff."""
+
+
+def require_scroll_time(end):
+    if end is not None and now_ist() >= end:
+        raise ScrollWindowEnded
+
+
+def record_scroll_share(state, day, message):
+    anchor = getattr(message, 'id', None)
+    if not isinstance(anchor, int):
+        raise RuntimeError('Telegram share returned no message ID; inspect before retry')
+    transition(state, f'{day}:scroll:last_anchor', anchor)
+
+
+def assert_no_uncertain_scroll_share(state, day):
+    if any(key.startswith(f'{day}:') and
+           (':after-' in key or ':post-start:' in key) and
+           key.endswith(':posted') and value == 'pending'
+           for key, value in state.items()):
+        raise RuntimeError('Uncertain 10 LIKE share; inspect Telegram before retry')
 
 
 def special_schedule(when):
@@ -116,35 +147,14 @@ def special_schedule(when):
     return config
 
 
-def scroll_slots(when):
-    slots = dict(SLOTS)
-    for raw in special_schedule(when).get('extra_scroll_times', []):
-        hour, minute = map(int, raw.split(':'))
-        if not (0 <= hour < 24 and 0 <= minute < 60):
-            raise RuntimeError(f'Invalid extra scroll time: {raw}')
-        slots[f'likes-{hour:02d}{minute:02d}'] = (hour, minute)
-    return dict(sorted(slots.items(), key=lambda item: item[1]))
-
-
-def scroll_retry_minutes(when):
-    return int(special_schedule(when).get('scroll_retry_minutes', 120))
-
-
-def scroll_post(when, slot):
-    config = special_schedule(when)
-    if config and slot != 'likes-07':
-        return when.date().isoformat(), config['url']
-    return posted_tweet_before(when)
-
-
 def mega_session(when):
-    """Identify the open 11 AM or date-bound extra MEGA session."""
+    """Use the next regular 8 PM session after the afternoon scroll window."""
     minute = when.hour * 60 + when.minute
     config = special_schedule(when)
     extra = config.get('extra_mega_hour')
     if extra is not None and 0 <= minute - int(extra) * 60 < 205:
         return f'mega-{int(extra):02d}', int(extra)
-    return 'mega', 11
+    return 'mega-20', 20
 
 
 def confirm_slot(mode, when):
@@ -153,58 +163,20 @@ def confirm_slot(mode, when):
     offset = (hour - start_hour) * 60 + minute
     if mode == 'mega-post' and not 5 <= offset < 30:
         raise RuntimeError(f'{session} post is outside its submission window')
-    if mode == 'mega-engage' and not 35 <= offset < 205:
+    if mode == 'mega-engage' and not 35 <= offset < 210:
         # A session already underway may finish late after an interruption.
         # Never start a fresh engagement outside the group's window.
         prefix = f'{when.date().isoformat()}:{session}:'
         state = load_state()
         started = any(k.startswith(prefix) and k.endswith(':like') and v == 'done'
                       for k, v in state.items())
-        if not (session == 'mega' and 205 <= offset < 360
+        if not (session == 'mega-20' and 210 <= offset < 240
                 and state.get(f'{prefix}posted') == 'done' and started):
             raise RuntimeError(f'{session} engagement is outside its completion window')
     if mode == 'likes':
-        like_slot(when)
-
-
-def like_slot(when):
-    minute_of_day = when.hour * 60 + when.minute
-    candidates = [(name, start[0] * 60 + start[1]) for name, start in scroll_slots(when).items()]
-    active = [(name, start) for name, start in candidates
-              if 0 <= minute_of_day - start < scroll_retry_minutes(when)]
-    if not active:
-        raise RuntimeError('Outside a configured 10 LIKE SCROLL slot')
-    return max(active, key=lambda item: item[1])[0]
-
-
-def due_like_slots(when, state):
-    minute = when.hour * 60 + when.minute
-    return [name for name, (hour, start_minute) in scroll_slots(when).items()
-            if 0 <= minute - (hour * 60 + start_minute) < scroll_retry_minutes(when)
-            and state.get(f'{when.date().isoformat()}:{name}:complete') != 'done']
-
-
-def hourly_scroll_slot(when):
-    """Return a temporary, date-bound hourly slot, if one was requested."""
-    try:
-        config = json.loads(HOURLY_SCROLL.read_text())
-    except (FileNotFoundError, ValueError):
-        return None
-    if config.get('date') != when.date().isoformat() or when.hour not in config.get('hours', []):
-        return None
-    return 'likes-22' if when.hour == 22 else f'scroll-{when.hour:02d}'
-
-
-def due_hourly_scroll_slots(when, state):
-    try:
-        config = json.loads(HOURLY_SCROLL.read_text())
-    except (FileNotFoundError, ValueError):
-        return []
-    if config.get('date') != when.date().isoformat():
-        return []
-    return [name for hour in config.get('hours', []) if hour <= when.hour
-            for name in [('likes-22' if hour == 22 else f'scroll-{hour:02d}')]
-            if state.get(f'{when.date().isoformat()}:{name}:complete') != 'done']
+        window = post_scroll_window(when)
+        if not window or not window[0] <= when < window[1]:
+            raise RuntimeError('Outside the five-hour post scroll window')
 
 
 def notify_failure(mode, error):
@@ -414,16 +386,29 @@ async def telegram_react(client, chat, msg_id, emoji):
                                      reaction=[ReactionEmoji(emoticon=emoji)]))
 
 
-async def execute(client, mode, when, dry, slot_override=None):
+async def execute(client, mode, when, dry, slot_override=None, window_end=None):
     today = when.date().isoformat()
     if mode == 'mega-post':
         chat, topic = await group_and_topic(client, 'MEGA ENGAGE')
-        session, _ = mega_session(when)
+        session, start_hour = mega_session(when)
         config = special_schedule(when)
-        source_day, url = ((today, config['url']) if session != 'mega'
+        source_day, url = ((today, config['url']) if config
                            else posted_tweet_before(when))
         if source_day != today:
-            raise RuntimeError('MEGA 11 AM requires today’s successful 10 AM tweet')
+            raise RuntimeError('MEGA 8 PM requires today’s successful post')
+        window = post_scroll_window(when)
+        if not window or when < window[1]:
+            raise RuntimeError('The five-hour scroll window must finish before MEGA')
+        start = when.replace(hour=start_hour, minute=0, second=0,
+                             microsecond=0).astimezone(ZoneInfo('UTC'))
+        messages = await messages_in_topic(client, chat, topic, 150)
+        if any(m.message and 'Total Links:' in m.message and m.date >= start
+               for m in messages):
+            print(f'{session}: session already closed; no submission')
+            return
+        if not tweet_links(messages, after=start):
+            print(f'{session}: no session links yet; waiting')
+            return
         state = load_state()
         key = f'{today}:{session}:posted'
         if dry:
@@ -442,11 +427,13 @@ async def execute(client, mode, when, dry, slot_override=None):
     if mode == 'mega-engage':
         chat, topic = await group_and_topic(client, 'MEGA ENGAGE')
         session, start_hour = mega_session(when)
+        if load_state().get(f'{today}:{session}:posted') != 'done':
+            raise RuntimeError('No confirmed Sinclair submission for this MEGA session')
         start = when.replace(hour=start_hour, minute=0, second=0, microsecond=0).astimezone(ZoneInfo('UTC'))
         end = start + timedelta(minutes=35)
         msgs = await messages_in_topic(client, chat, topic, 150)
         links = tweet_links(msgs, after=start, before=end)
-        own = (special_schedule(when)['url'] if session != 'mega'
+        own = (special_schedule(when)['url'] if special_schedule(when)
                else posted_tweet_before(when)[1])
         links = [x for x in links if x['url'] != own]
         close = next((m for m in msgs if m.message and 'Total Links:' in m.message and m.date >= start), None)
@@ -454,10 +441,10 @@ async def execute(client, mode, when, dry, slot_override=None):
             raise RuntimeError('No MEGA session-close notice yet')
         count_match = re.search(r'Total Links:\s*(\d+)', close.message)
         count = int(count_match.group(1)) if count_match else 0
-        official = OUT / 'orbit' / today / 'official_links.txt'
+        official = OUT / 'orbit' / today / session / 'official_links.txt'
         missing_official = []
-        document = official.read_text() if official.exists() and session == 'mega' else None
-        if document is None and session == 'mega':
+        document = official.read_text() if official.exists() else None
+        if document is None:
             attachment = next((m for m in msgs if m.id > close.id
                                and m.date <= close.date + timedelta(minutes=2)
                                and getattr(getattr(m, 'file', None), 'name', '') == 'links.txt'), None)
@@ -502,17 +489,22 @@ async def execute(client, mode, when, dry, slot_override=None):
         return
 
     chat, topic = await group_and_topic(client, '10 LIKE SCROLL (10d mute)')
-    slot = slot_override or like_slot(when)
+    slot = slot_override or 'post-start'
+    if slot != 'post-start':
+        raise RuntimeError('The fixed 10 LIKE schedule is retired')
     key = f'{today}:{slot}'
-    source_day, url = scroll_post(when, slot)
-    expected_day = (when.date() - timedelta(days=1)).isoformat() if slot == 'likes-07' else today
-    if source_day != expected_day:
-        raise RuntimeError(f'{slot} requires a successful Sinclair tweet from {expected_day}')
-    # Backlogged slots may run minutes apart. A repeated share must wait for
-    # ten new member links after the latest share of this tweet.
+    window = post_scroll_window(when)
+    if not window:
+        raise RuntimeError('No stamped Sinclair post for today')
+    url = window[2]
+    # A repeated share must wait for ten new member links after our last share.
     msgs = await messages_in_topic(client, chat, topic, 1000)
-    if latest_own_share(msgs, url) is not None:
-        await execute_hourly_scroll(client, when, dry, slot_override=slot)
+    own_share = latest_own_share(msgs, url)
+    if own_share is not None:
+        if slot == 'post-start':
+            await execute_hourly_scroll(client, when, dry,
+                slot_override=f'after-{own_share.id}',
+                window_end=window_end)
         return
     snapshot = OUT / 'orbit' / today / slot / 'candidates.json'
     if snapshot.exists():
@@ -521,6 +513,9 @@ async def execute(client, mode, when, dry, slot_override=None):
         msgs = await messages_in_topic(client, chat, topic, 80)
         own_handle = os.environ.get('X_BOT_USERNAME', 'SinClair_0000').lower()
         links = latest_scroll_links(msgs, own_handle)
+    if len(links) != 10 and slot == 'post-start':
+        print(f'{slot}: {len(links)} links; waiting for 10')
+        return
     if len(links) != 10:
         raise RuntimeError(f'Only {len(links)} recent 10 LIKE links found; need 10')
     print(f'{slot}: {len(links)} links; share {url}')
@@ -533,8 +528,10 @@ async def execute(client, mode, when, dry, slot_override=None):
     initial_message_ids = {item['message_id'] for item in links}
 
     async def engage(item):
+        require_scroll_time(window_end)
         tid = item['id']
         ensure_like(state, f'{key}:{tid}:like', tid)
+        require_scroll_time(window_end)
         reaction_key = f'{key}:{tid}:reaction'
         message_key = f"{key}:msg:{item['message_id']}:reaction"
         if item['message_id'] in initial_message_ids and state.get(reaction_key) == 'pending':
@@ -574,33 +571,69 @@ async def execute(client, mode, when, dry, slot_override=None):
     if state.get(post_key) == 'pending':
         raise RuntimeError('Uncertain 10 LIKE post; inspect before retry')
     if state.get(post_key) != 'done':
+        require_scroll_time(window_end)
         msgs = await messages_in_topic(client, chat, topic, 1000)
         if latest_own_share(msgs, url) is not None:
             raise RuntimeError('Sinclair already shared this tweet; inspect before retry')
         transition(state, post_key, 'pending')
-        await client.send_message(chat, url, reply_to=topic.id, link_preview=False)
+        sent = await client.send_message(chat, url, reply_to=topic.id, link_preview=False)
+        record_scroll_share(state, today, sent)
         transition(state, post_key, 'done')
     transition(state, f'{key}:complete', 'done')
 
 
-async def execute_hourly_scroll(client, when, dry, slot_override=None):
-    """Once per configured hour, engage the next ten links after our latest share."""
-    slot = slot_override or hourly_scroll_slot(when)
-    if not slot:
+async def execute_post_scroll(client, when, dry):
+    window = post_scroll_window(when)
+    if not window or not window[0] <= when < window[1]:
         return
+    chat, topic = await group_and_topic(client, '10 LIKE SCROLL (10d mute)')
+    if getattr(topic, 'closed', False):
+        raise RuntimeError('10 LIKE topic is closed')
+    msgs = await messages_in_topic(client, chat, topic, 1000)
+    state = load_state()
+    assert_no_uncertain_scroll_share(state, when.date().isoformat())
+    own = latest_own_share(msgs, window[2])
+    anchor = own.id if own else state.get(f'{when.date().isoformat()}:scroll:last_anchor')
+    try:
+        if anchor is None:
+            if state.get(f'{when.date().isoformat()}:post-start:posted') == 'done':
+                raise RuntimeError('Previous scroll share is outside Telegram history')
+            await execute(client, 'likes', when, dry,
+                          slot_override='post-start', window_end=window[1])
+        else:
+            await execute_hourly_scroll(client, when, dry,
+                slot_override=f'after-{anchor}',
+                window_end=window[1])
+    except ScrollWindowEnded:
+        print('Five-hour scroll window ended; no further share')
+
+
+async def execute_hourly_scroll(client, when, dry, slot_override=None,
+                                window_end=None):
+    """Engage ten new links after our latest share, then share again."""
+    slot = slot_override
+    if not slot or not slot.startswith('after-'):
+        raise RuntimeError('A current scroll share anchor is required')
     today = when.date().isoformat()
     key = f'{today}:{slot}'
     state = load_state()
     if state.get(f'{key}:complete') == 'done':
         return
-    source_day, url = scroll_post(when, slot)
-    expected_day = (when.date() - timedelta(days=1)).isoformat() if slot == 'likes-07' else today
-    if source_day != expected_day:
-        raise RuntimeError(f'{slot} requires a successful Sinclair tweet from {expected_day}')
+    window = post_scroll_window(when)
+    if not window:
+        raise RuntimeError('No stamped Sinclair post for today')
+    url = window[2]
     chat, topic = await group_and_topic(client, '10 LIKE SCROLL (10d mute)')
     if getattr(topic, 'closed', False):
         raise RuntimeError('10 LIKE topic is closed')
     own_handle = os.environ.get('X_BOT_USERNAME', 'SinClair_0000').lower()
+    current_messages = await messages_in_topic(client, chat, topic, 1000)
+    current = latest_own_share(current_messages, url)
+    anchor_id = int(slot.removeprefix('after-'))
+    stored_anchor = state.get(f'{today}:scroll:last_anchor')
+    if (current is not None and current.id != anchor_id) or (
+            current is None and stored_anchor != anchor_id):
+        return
     snapshot = OUT / 'orbit' / today / slot / 'candidates.json'
     if snapshot.exists():
         saved = json.loads(snapshot.read_text())
@@ -608,16 +641,11 @@ async def execute_hourly_scroll(client, when, dry, slot_override=None):
             raise RuntimeError('Hourly scroll snapshot is invalid')
         links = saved['links']
     else:
-        msgs = await messages_in_topic(client, chat, topic, 1000)
-        own_message_id, links = links_after_own_share(msgs, url, own_handle)
-        own_message = next(m for m in msgs if m.id == own_message_id)
-        if when - own_message.date.astimezone(IST) < timedelta(minutes=55):
-            print(f'{slot}: last Sinclair share is under 55 minutes old; waiting')
-            return
+        links = latest_links_since_anchor(current_messages, anchor_id, own_handle)
         if len(links) < 10:
             print(f'{slot}: {len(links)} new links after our last share; waiting for 10')
             return
-        saved = {'anchor_message_id': own_message_id, 'own_url': url, 'links': links}
+        saved = {'anchor_message_id': anchor_id, 'own_url': url, 'links': links}
         if not dry:
             snapshot.parent.mkdir(parents=True, exist_ok=True)
             snapshot.write_text(json.dumps(saved, indent=2) + '\n')
@@ -630,8 +658,10 @@ async def execute_hourly_scroll(client, when, dry, slot_override=None):
     initial_message_ids = {item['message_id'] for item in links}
 
     async def engage(item):
+        require_scroll_time(window_end)
         tid = item['id']
         ensure_like(state, f'{key}:{tid}:like', tid)
+        require_scroll_time(window_end)
         reaction_key = f"{key}:msg:{item['message_id']}:reaction"
         if (item['message_id'] in initial_message_ids
                 and state.get(f'{key}:{tid}:reaction') == 'done'):
@@ -651,7 +681,8 @@ async def execute_hourly_scroll(client, when, dry, slot_override=None):
     for _ in range(20):
         msgs = await messages_in_topic(client, chat, topic, 1000)
         own = latest_own_share(msgs, url)
-        if own is None or own.id != saved['anchor_message_id']:
+        if (own is not None and own.id != saved['anchor_message_id']) or (
+                own is None and state.get(f'{today}:scroll:last_anchor') != saved['anchor_message_id']):
             raise RuntimeError('Sinclair shared again since this cycle began; inspect before retry')
         latest = latest_links_since_anchor(msgs, saved['anchor_message_id'], own_handle)
         if len(latest) < 10:
@@ -666,8 +697,10 @@ async def execute_hourly_scroll(client, when, dry, slot_override=None):
     else:
         raise RuntimeError('New links kept arriving; did not repost before covering the latest ten')
     if state.get(post_key) != 'done':
+        require_scroll_time(window_end)
         transition(state, post_key, 'pending')
-        await client.send_message(chat, url, reply_to=topic.id, link_preview=False)
+        sent = await client.send_message(chat, url, reply_to=topic.id, link_preview=False)
+        record_scroll_share(state, today, sent)
         transition(state, post_key, 'done')
     transition(state, f'{key}:complete', 'done')
 
@@ -679,12 +712,12 @@ async def main_async(mode, dry, scheduled=False):
         print(f'Orbit paused until {os.environ["ORBIT_NOT_BEFORE"]}; no action taken')
         return 0
     if mode != 'check':
-        if scheduled and not (mode == 'likes' and due_hourly_scroll_slots(when, load_state())):
+        if scheduled:
             try:
                 confirm_slot(mode, when)
             except RuntimeError:
                 return 0
-        elif not scheduled:
+        else:
             confirm_slot(mode, when)
         session, _ = mega_session(when)
         if scheduled and mode == 'mega-engage':
@@ -692,8 +725,6 @@ async def main_async(mode, dry, scheduled=False):
             prefix = f'{when.date().isoformat()}:{session}:'
             if state.get(prefix + 'complete') == 'done' or state.get(prefix + 'partial') == 'done':
                 return 0
-        if scheduled and mode == 'likes' and not due_like_slots(when, load_state()) and not due_hourly_scroll_slots(when, load_state()):
-            return 0
     missing = [name for name in ('TG_API_ID', 'TG_API_HASH', 'TG_PHONE', 'TWITTERAPI_KEY')
                if not os.getenv(name)]
     session = OUT / 'telegram.session'
@@ -722,14 +753,8 @@ async def main_async(mode, dry, scheduled=False):
     try:
         if not await client.is_user_authorized():
             raise RuntimeError('Telegram session expired; run python3 tg_setup.py interactively')
-        if mode == 'likes' and scheduled:
-            hourly_slots = due_hourly_scroll_slots(when, load_state())
-            for slot in due_like_slots(when, load_state()):
-                if hourly_scroll_slot(when) and slot == 'likes-22':
-                    continue
-                await execute(client, mode, when, dry, slot_override=slot)
-            for slot in hourly_slots:
-                await execute_hourly_scroll(client, when, dry, slot_override=slot)
+        if mode == 'likes':
+            await execute_post_scroll(client, when, dry)
         else:
             await execute(client, mode, when, dry)
     finally:
