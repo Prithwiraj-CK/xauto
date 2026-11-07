@@ -427,12 +427,16 @@ async def execute(client, mode, when, dry, slot_override=None, window_end=None):
     if mode == 'mega-engage':
         chat, topic = await group_and_topic(client, 'MEGA ENGAGE')
         session, start_hour = mega_session(when)
-        if load_state().get(f'{today}:{session}:posted') != 'done':
-            raise RuntimeError('No confirmed Sinclair submission for this MEGA session')
         start = when.replace(hour=start_hour, minute=0, second=0, microsecond=0).astimezone(ZoneInfo('UTC'))
         end = start + timedelta(minutes=35)
         msgs = await messages_in_topic(client, chat, topic, 150)
         links = tweet_links(msgs, after=start, before=end)
+        if load_state().get(f'{today}:{session}:posted') != 'done':
+            if not links and not any(m.message and 'Total Links:' in m.message
+                                     and m.date >= start for m in msgs):
+                print(f'{session}: session not open; waiting')
+                return
+            raise RuntimeError('No confirmed Sinclair submission for this MEGA session')
         own = (special_schedule(when)['url'] if special_schedule(when)
                else posted_tweet_before(when)[1])
         links = [x for x in links if x['url'] != own]

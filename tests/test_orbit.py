@@ -182,6 +182,21 @@ class OrbitTests(unittest.TestCase):
             asyncio.run(orbit.execute(client, 'mega-post', when, False))
         client.send_message.assert_not_awaited()
 
+    def test_mega_engagement_skips_absent_session_but_flags_missed_submission(self):
+        when = datetime(2026, 11, 4, 20, 40, tzinfo=orbit.IST)
+        client = AsyncMock()
+        with patch.object(orbit, 'group_and_topic', new_callable=AsyncMock,
+                          return_value=('chat', SimpleNamespace(id=1))), \
+             patch.object(orbit, 'messages_in_topic', new_callable=AsyncMock,
+                          return_value=[]) as messages, \
+             patch.object(orbit, 'load_state', return_value={}):
+            asyncio.run(orbit.execute(client, 'mega-engage', when, False))
+            messages.return_value = [SimpleNamespace(
+                id=1, date=datetime(2026, 11, 4, 14, 40, tzinfo=timezone.utc),
+                message='https://x.com/member/status/123')]
+            with self.assertRaisesRegex(RuntimeError, 'No confirmed Sinclair submission'):
+                asyncio.run(orbit.execute(client, 'mega-engage', when, False))
+
     def test_regular_scroll_recheck_replaces_oldest_link_when_new_one_arrives(self):
         def msg(mid, author):
             return SimpleNamespace(id=mid, message=f'https://x.com/{author}/status/{mid}')
