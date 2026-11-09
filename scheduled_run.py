@@ -63,6 +63,8 @@ def validate_post(post, day):
         raise ValueError('Post failed voice checks: ' + '; '.join(voice_errors))
     if re.search(r'\[[^\]]+\]', text):
         raise ValueError('Post contains an unfilled placeholder')
+    if post.get('quote_tweet_url'):
+        raise ValueError('Daily posts must be original; quote tweets are disabled')
     expected = SLOTS[datetime.fromisoformat(day).weekday()]
     if post.get('type') != expected:
         # PLAN.md allows a documented breaking-news override, never silent topic drift.

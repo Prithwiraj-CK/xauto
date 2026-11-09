@@ -2,7 +2,7 @@
 
 All daily and manual `send_post.py` drafts must declare `content_kind`: `opinion`,
 `reaction`, `research`, `investigation`, or `journey`. This describes the content;
-`type` still follows the existing weekday topic. Do not classify factual reporting
+`type` still follows the existing weekday topic. Scheduled daily posts must be original and may not use quote tweets; the reaction rules below remain for manual posts. Do not classify factual reporting
 as opinion to avoid proof checks. JSON `note` is internal and is never a source reply.
 
 ## Required review before saving a draft

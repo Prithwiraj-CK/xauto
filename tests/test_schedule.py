@@ -30,10 +30,13 @@ class ScheduleTests(unittest.TestCase):
             if topic in daily.POST_TYPES_REQUIRING_PROOF:
                 with self.assertRaises(ValueError):
                     schedule.validate_post(post, f'2026-11-{day:02d}')
-                post['quote_tweet_url'] = 'https://x.com/source/status/123'
-                post['text'] += ' @source'
-                post['sources'] = [{'url': post['quote_tweet_url'], 'claim': 'test source', 'checked_at': '2026-01-01T00:00:00Z'}]
-            schedule.validate_post(post, f'2026-11-{day:02d}')
+            else:
+                schedule.validate_post(post, f'2026-11-{day:02d}')
+            post['quote_tweet_url'] = 'https://x.com/source/status/123'
+            post['text'] += ' @source'
+            post['sources'] = [{'url': post['quote_tweet_url'], 'claim': 'test source', 'checked_at': '2026-01-01T00:00:00Z'}]
+            with self.assertRaisesRegex(ValueError, 'quote tweets are disabled'):
+                schedule.validate_post(post, f'2026-11-{day:02d}')
         with self.assertRaises(ValueError):
             schedule.validate_post({'type': 'hot-take', 'text': 'my thought'}, '2026-11-01')
         with self.assertRaises(ValueError):
@@ -64,6 +67,18 @@ class ScheduleTests(unittest.TestCase):
                 post.write_text('{"changed":true}')
                 self.assertFalse(daily.codex_draft_valid('2026-11-01', include_replies=False))
 
+    def test_daily_publisher_rejects_quote_before_external_write(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            post = root / 'post.json'
+            post.write_text(json.dumps({'type': 'journey', 'content_kind': 'opinion',
+                                        'text': 'original thought',
+                                        'quote_tweet_url': 'https://x.com/source/status/123'}))
+            with patch.object(daily, 'ROOT', root), patch.object(daily, 'POST', post), \
+                 patch.object(daily, 'log'), patch.object(daily, 'publish_post') as publish:
+                self.assertIsNone(daily.post_daily(False))
+                publish.assert_not_called()
+
     def test_failed_post_does_not_stamp_success_or_queue_replies(self):
         with patch.object(daily, 'load_env'), patch.object(daily, 'log'), patch.object(daily, 'read_state', return_value={}), \
              patch.object(daily, 'codex_draft_valid', return_value=True), patch.object(daily, 'spend_start'), \
@@ -84,20 +99,19 @@ class ScheduleTests(unittest.TestCase):
     def test_date_specific_post_takes_priority_over_weekday_generation(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            folder = root / 'out/scheduled/2026-11-02/daily'
+            folder = root / 'out/scheduled/2026-11-01/daily'
             folder.mkdir(parents=True)
-            pinned = schedule.scheduled_post('2026-11-02')
-            pinned['content_kind'] = 'opinion'
+            pinned = {'type': 'journey', 'content_kind': 'journey', 'text': 'a specific question for next week?'}
             (root / 'content/scheduled_posts').mkdir(parents=True)
-            (root / 'content/scheduled_posts/2026-11-02.json').write_text(json.dumps(pinned))
-            now = datetime(2026, 11, 2, 13, 0, tzinfo=schedule.IST)
+            (root / 'content/scheduled_posts/2026-11-01.json').write_text(json.dumps(pinned))
+            now = datetime(2026, 11, 1, 13, 0, tzinfo=schedule.IST)
             with patch.object(schedule, 'ROOT', root), patch.object(daily, 'read_state', return_value={}), \
                  patch.object(daily, 'codex_draft_valid', return_value=False), \
                  patch.object(schedule, 'now_ist', return_value=now), \
                  patch.object(schedule, 'generate') as generate, patch.object(schedule, 'checked') as checked, \
                  patch.object(schedule, 'push_draft'), \
                  patch.object(schedule.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
-                schedule.daily('2026-11-02', folder)
+                schedule.daily('2026-11-01', folder)
                 generate.assert_not_called()
                 checked.assert_called_once_with([sys.executable, 'run_daily.py', '--post-only'])
                 self.assertEqual(json.loads((root / 'out/post.json').read_text()), pinned)

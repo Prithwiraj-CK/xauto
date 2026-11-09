@@ -183,6 +183,9 @@ def post_daily(dry):
     p = json.loads(POST.read_text())
     text = p.get("text", "")
     qt_url = p.get("quote_tweet_url") or ""
+    if qt_url:
+        log("HARD RULE: daily posts must be original; quote tweets are disabled")
+        return None
     try:
         post_contract.validate_post(p, ROOT)
     except (ValueError, OSError) as error:

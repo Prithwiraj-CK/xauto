@@ -63,10 +63,20 @@ class ProofTests(unittest.TestCase):
         get = stack.enter_context(patch.object(publisher, 'get_tweet', side_effect=lambda tid: self.tweet(tid, tid == '11')))
         return act, get, upload
 
-    def test_quote_with_images_passes_scheduler_and_shared_contract(self):
+    def test_manual_quote_allowed_but_daily_quote_rejected(self):
         contract.validate_post(self.post, self.root)
         with patch.object(scheduled_run, 'ROOT', self.root):
-            scheduled_run.validate_post(self.post, '2026-11-03')
+            with self.assertRaisesRegex(ValueError, 'quote tweets are disabled'):
+                scheduled_run.validate_post(self.post, '2026-11-03')
+
+    def test_original_daily_post_with_authentic_proof_allowed(self):
+        post = {**self.post, 'type': 'meteora', 'content_kind': 'research',
+                'text': 'the linked pool data shows the position value',
+                'subject_handles': [], 'sources': self.post['sources'][1:]}
+        post.pop('source_tweet_url')
+        post.pop('quote_tweet_url')
+        with patch.object(scheduled_run, 'ROOT', self.root):
+            scheduled_run.validate_post(post, '2026-11-04')
 
     def test_missing_tag_wrong_quote_or_missing_images_rejected(self):
         changes = [{'text': 'subject, why did these wallets buy early?'},
@@ -148,13 +158,13 @@ class ProofTests(unittest.TestCase):
                 with self.subTest(field=field), self.assertRaises(ValueError):
                     publisher.verify_tweet({**self.tweet(), field: value}, self.post['text'], SOURCE, 1)
 
-    def test_daily_and_legacy_publishers_share_the_package_path(self):
+    def test_daily_blocks_quotes_while_manual_publisher_keeps_the_package_path(self):
         (self.root / 'out').mkdir(); path = self.root / 'out/post.json'
         path.write_text(json.dumps(self.post)); (self.root / '.env').write_text('')
         with patch.object(run_daily, 'ROOT', self.root), patch.object(run_daily, 'POST', path), \
              patch.object(run_daily, 'log'), patch.object(run_daily, 'publish_post', return_value='10') as publish:
-            self.assertEqual(run_daily.post_daily(False), '10')
-            publish.assert_called_once_with(self.post, self.root)
+            self.assertIsNone(run_daily.post_daily(False))
+            publish.assert_not_called()
         with patch.object(send_post, 'ROOT', self.root), patch.object(send_post, 'send'), \
              patch.object(send_post, 'publish_post', return_value='10') as publish, \
              patch.dict('os.environ', {}, clear=True):

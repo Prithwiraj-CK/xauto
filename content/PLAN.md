@@ -69,7 +69,7 @@ Attach the Discord profile screenshot showing the roles.
 
 ## Evidence and audience quality (applies to every future draft)
 
-Follow `content/POST_SCHEMA.md`. Each reaction must carry the actual original QT and
+Follow `content/POST_SCHEMA.md`. Scheduled daily posts must be original and cannot quote-tweet another account. Manual reactions must carry the actual original QT and
 verified @mention; factual investigations additionally need readable authentic image
 receipts. The publisher supports QT + images together. Save image provenance, credit,
 visual review and SHA256, and put links in the public source reply. Reject unsupported

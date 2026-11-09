@@ -11,13 +11,11 @@ On Wednesday or Thursday, if choosing a Meteora pool research post:
 
 The scheduler validates type, voice, length and proof; stamps today's date and exact post hash; calls `run_daily.py --post-only`; then commits and pushes the draft backup. Failed publication does not write a successful daily stamp. The four reply sessions run independently.
 
-Drafts also follow `content/POST_SCHEMA.md`. Publication accepts a QT with images,
-checks real @mentions and image provenance, then reads the live main tweet and source
-reply back. `out/publications/` retains IDs before verification. If verification fails,
+Drafts also follow `content/POST_SCHEMA.md`. Scheduled daily posts are original and cannot use quote tweets. Publication checks real @mentions and image provenance, then reads the live main tweet and source reply back. `out/publications/` retains IDs before verification. If verification fails,
 inspect that receipt and the existing post; never force a second publication. Uncertain
 writes block replacement drafts until reviewed. No live test posts are needed for code changes.
 
-The editorial pass must establish a contribution beyond the quoted source. The shared
+The editorial pass must establish a contribution beyond the source material. The shared
 contract rejects stored bad examples and the repeated short-opener/cautious-narrator/
 audience-question formula before publication. These are regression checks, not a
 guarantee of natural writing. If no worthwhile supported angle fits, fail the draft.

@@ -4,6 +4,8 @@ This is the daily post's writing authority. It supersedes older style memories,
 examples and teaching-bank templates. PLAN.md selects the topic. POST_SCHEMA.md
 controls evidence and attachments. Passing those checks does not make a post good.
 
+Owner instruction, 8 November: daily posts must be original. Do not quote-tweet another account. Cite primary sources and use authentic reviewed images when the topic requires visual proof.
+
 ## What the owner rejected
 
 The owner rejected the November 5 post as "botted ai slop ai written":
@@ -36,7 +38,7 @@ Look for an identifiable statement, discrepancy or consequence that the evidence
 actually establishes. On Meteora days it must still concern Meteora. A routine
 release note does not become a story by adding an LP disclaimer.
 
-In the internal `note`, explain the contribution beyond the quoted source and name
+In the internal `note`, explain the contribution beyond the source material and name
 the evidence supporting it. This is reasoning, not a self-awarded quality score.
 If the only contribution is "could help", "worth watching", "check before signing",
 or asking whether anyone has tried it, choose a better story within today's topic.
@@ -46,12 +48,12 @@ Do not fill the daily slot with a paraphrase. Do not force an accusation either.
 ## Write the actual point
 
 - Lead with the concrete fact or disagreement. No separate slogan is required.
-  An opening must make sense to someone who hasn't read the QT.
+  An opening must make sense to someone who hasn't opened the source link.
 - Use plain words and the few technical terms needed to understand the evidence.
   Explain the consequence instead of piling on LP jargon.
 - One or two sentences can be enough. No required paragraph count, hook length,
   first-person angle, joke, slang, disclaimer or closing question.
-- A QT already shows the announcement. Don't spend the main post repeating it.
+- Don't spend the main post repeating a source announcement.
 - Use first person for a real view or a documented experience. "i'd check" does not
   turn a generic summary into a personal account. Never invent a trade or test.
 - Keep uncertainty when the claim needs it. Don't add a boilerplate warning to
@@ -66,7 +68,7 @@ Do not fill the daily slot with a paraphrase. Do not force an accusation either.
 
 ## Evidence stays intact
 
-Use the actual QT and verified @tag when responding to a public statement.
+Manual reactions use the actual QT and verified @tag when responding to a public statement. Scheduled daily posts are original and should develop their own finding from primary sources.
 Investigations need authentic, readable screenshots that show the specific claim,
 with source, credit and hash. Never fabricate or generate proof. A product promo
 image isn't proof of execution, returns or wrongdoing. Preserve the scope of the
@@ -82,7 +84,7 @@ the claim accurately in the first place.
 
 Compare the draft to the source and recent posts, including source replies:
 
-1. What can the reader learn here that the QT didn't already tell them?
+1. What can the reader learn here that the source didn't already tell them?
 2. Which exact sentence carries the finding or disagreement? If none, reject it.
 3. Would swapping the token/project name leave the take unchanged? If so, make
    it specific with evidence or drop the angle.
