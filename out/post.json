@@ -1,17 +1,31 @@
 {
-  "type": "journey",
-  "content_kind": "opinion",
-  "text": "the LP flex i want to see next week: full 7-day wallet PnL, not one fee screenshot. show what went in, what came out, fees claimed and the value still sitting in positions. a big fee day can look great while the token side is underwater.",
-  "subject_handles": [],
-  "sources": [
-    {
-      "url": "https://docs.meteora.ag/developer-guides/dlmm/api-reference/overview",
-      "claim": "Meteora DLMM API provides portfolio PnL and position history for deposits, withdrawals and fee claims.",
-      "checked_at": "2026-11-08T13:00:13.086048+05:30"
-    }
+  "type": "solana-viral",
+  "content_kind": "reaction",
+  "text": "Backpack lists 1,200+ stocks and ETFs in its brokerage. Its catalog of Backpack-issued Solana tokens has 91. That's the gap in @solana's wallet vision: brokerage access covers far more shares than wallet withdrawal today.",
+  "subject_handles": [
+    "solana"
   ],
+  "source_tweet_url": "https://x.com/solana/status/2119112644325965973",
+  "quote_tweet_url": "https://x.com/solana/status/2119112644325965973",
   "images": [],
   "image_proof": [],
-  "source_reply": "Meteora\u2019s DLMM data API exposes portfolio PnL and position histories, including adds, removes and fee claims: https://docs.meteora.ag/developer-guides/dlmm/api-reference/overview",
-  "note": "Original Sunday view about what LP receipts to seek next week. No quoted account, wallet result or invented experience. Official Meteora API docs support the accounting fields."
+  "sources": [
+    {
+      "url": "https://x.com/solana/status/2119112644325965973",
+      "claim": "Solana's November 7 clip quotes Backpack CEO Armani Ferrante describing a future where global brokerage assets are accessible from a self-custodial wallet.",
+      "checked_at": "2026-11-09T11:15:22+05:30"
+    },
+    {
+      "url": "https://backpack.exchange/about/stocks",
+      "claim": "Backpack advertises 1,200+ brokerage stocks and ETFs; only eligible stocks may be withdrawn to Solana, and stock services are limited to eligible jurisdictions.",
+      "checked_at": "2026-11-09T11:15:22+05:30"
+    },
+    {
+      "url": "https://ui.backpack.exchange/tokenized-stocks/assets",
+      "claim": "Backpack's tokenized-securities catalog lists 91 Backpack-issued Solana assets (80 stocks and 11 ETFs/funds).",
+      "checked_at": "2026-11-09T11:15:22+05:30"
+    }
+  ],
+  "source_reply": "Backpack's catalogs, checked 9 Nov: 1,200+ brokerage listings https://backpack.exchange/about/stocks and 91 Backpack-issued Solana tokens https://ui.backpack.exchange/tokenized-stocks/assets. These are different catalogs, not a count of every stock token on Solana. Stock access also depends on jurisdiction.",
+  "note": "Contribution beyond the quoted vision: compares Backpack's present brokerage catalog with its own issued Solana-token catalog. The 1,200+ versus 91 gap establishes that brokerage availability and wallet withdrawal are currently different scopes. Primary Backpack catalog pages support both counts; the source reply states the scope and jurisdiction limit. No allegation about backing or redemption is made. Yesterday's post concerned LP PnL, so this is a different argument."
 }
