@@ -148,9 +148,15 @@ def special_schedule(when):
 
 
 def mega_session(when):
-    """Use the next regular 8 PM session after the afternoon scroll window."""
+    """Use a one-day replacement session when configured, otherwise 8 PM."""
     minute = when.hour * 60 + when.minute
     config = special_schedule(when)
+    only = config.get('only_mega_hour')
+    if only is not None:
+        hour = int(only)
+        if not 0 <= hour <= 23:
+            raise RuntimeError('Invalid one-day MEGA hour')
+        return f'mega-{hour:02d}', hour
     extra = config.get('extra_mega_hour')
     if extra is not None and 0 <= minute - int(extra) * 60 < 205:
         return f'mega-{int(extra):02d}', int(extra)

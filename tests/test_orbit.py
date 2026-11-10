@@ -63,6 +63,26 @@ class OrbitTests(unittest.TestCase):
             self.assertEqual(orbit.mega_session(datetime(2026, 11, 3, 16, 5,
                              tzinfo=orbit.IST)), ('mega-20', 20))
 
+    def test_one_day_replacement_mega_session_skips_eight_pm(self):
+        config = {'date': '2026-11-11',
+                  'url': 'https://x.com/SinClair_0000/status/2120244520180908144',
+                  'only_mega_hour': 11}
+        with tempfile.TemporaryDirectory() as temp, \
+             patch.object(orbit, 'SPECIAL', Path(temp) / 'special.json'):
+            orbit.SPECIAL.write_text(json.dumps(config))
+            orbit.confirm_slot('mega-post', datetime(2026, 11, 11, 11, 5,
+                               tzinfo=orbit.IST))
+            orbit.confirm_slot('mega-engage', datetime(2026, 11, 11, 11, 35,
+                               tzinfo=orbit.IST))
+            with self.assertRaises(RuntimeError):
+                orbit.confirm_slot('mega-post', datetime(2026, 11, 11, 20, 5,
+                                   tzinfo=orbit.IST))
+            with self.assertRaises(RuntimeError):
+                orbit.confirm_slot('mega-engage', datetime(2026, 11, 11, 20, 35,
+                                   tzinfo=orbit.IST))
+            self.assertEqual(orbit.mega_session(datetime(2026, 11, 12, 20, 5,
+                             tzinfo=orbit.IST)), ('mega-20', 20))
+
     def test_hourly_scroll_uses_ten_new_links_after_latest_own_share(self):
         def msg(mid, author, tweet_id, out=False):
             return SimpleNamespace(id=mid, out=out,
