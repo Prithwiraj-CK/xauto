@@ -51,6 +51,30 @@ class OrbitTests(unittest.TestCase):
         with patch.object(orbit.run_daily, 'read_state', return_value={'2026-11-01': {'post_tweet_id': '456'}}):
             self.assertIsNone(orbit.post_scroll_window(when))
 
+    def test_one_day_scroll_extends_to_eleven_am_only_for_matching_post(self):
+        day = '2026-11-11'
+        config = {'date': day,
+                  'url': 'https://x.com/SinClair_0000/status/456',
+                  'scroll_end_at': '2026-11-11T11:00:00+05:30',
+                  'only_mega_hour': 11}
+        history = {day: {'post_tweet_id': '456',
+                         'posted_at': '2026-11-11T01:27:40+05:30'}}
+        with tempfile.TemporaryDirectory() as temp, \
+             patch.object(orbit, 'SPECIAL', Path(temp) / 'special.json'), \
+             patch.object(orbit.run_daily, 'read_state', return_value=history):
+            orbit.SPECIAL.write_text(json.dumps(config))
+            before = datetime(2026, 11, 11, 10, 59, tzinfo=orbit.IST)
+            cutoff = datetime(2026, 11, 11, 11, 0, tzinfo=orbit.IST)
+            self.assertEqual(orbit.post_scroll_window(before)[1], cutoff)
+            orbit.confirm_slot('likes', before)
+            with self.assertRaises(RuntimeError):
+                orbit.confirm_slot('likes', cutoff)
+            orbit.confirm_slot('mega-post', datetime(2026, 11, 11, 11, 5,
+                               tzinfo=orbit.IST))
+            history[day]['post_tweet_id'] = '789'
+            self.assertEqual(orbit.post_scroll_window(before)[1],
+                             datetime(2026, 11, 11, 6, 27, 40, tzinfo=orbit.IST))
+
     def test_one_day_extra_mega_session_expires(self):
         config = {'date': '2026-11-02',
                   'url': 'https://x.com/SinClair_0000/status/2117164586495615402',

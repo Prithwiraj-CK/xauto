@@ -93,7 +93,7 @@ def posted_tweet_before(when):
 
 
 def post_scroll_window(when):
-    """Only a stamped post from today opens a five-hour scroll window."""
+    """Only a stamped post from today opens a scroll window."""
     item = run_daily.read_state().get(when.date().isoformat(), {})
     tweet_id, raw = item.get('post_tweet_id'), item.get('posted_at')
     if not tweet_id or not raw:
@@ -105,7 +105,16 @@ def post_scroll_window(when):
     if start.date() != when.date():
         return None
     url = f"https://x.com/{os.environ.get('X_BOT_USERNAME', 'SinClair_0000')}/status/{tweet_id}"
-    return start, start + timedelta(hours=5), url
+    end = start + timedelta(hours=5)
+    config = special_schedule(when)
+    if config.get('url') == url and config.get('scroll_end_at'):
+        override = datetime.fromisoformat(config['scroll_end_at'])
+        if override.tzinfo is None:
+            raise RuntimeError('Scroll end timestamp has no timezone')
+        end = override.astimezone(IST)
+        if end.date() != start.date() or end <= start:
+            raise RuntimeError('Scroll end must follow today’s post')
+    return start, end, url
 
 
 class ScrollWindowEnded(Exception):
@@ -182,7 +191,7 @@ def confirm_slot(mode, when):
     if mode == 'likes':
         window = post_scroll_window(when)
         if not window or not window[0] <= when < window[1]:
-            raise RuntimeError('Outside the five-hour post scroll window')
+            raise RuntimeError('Outside the post scroll window')
 
 
 def notify_failure(mode, error):
@@ -401,10 +410,10 @@ async def execute(client, mode, when, dry, slot_override=None, window_end=None):
         source_day, url = ((today, config['url']) if config
                            else posted_tweet_before(when))
         if source_day != today:
-            raise RuntimeError('MEGA 8 PM requires today’s successful post')
+            raise RuntimeError('MEGA requires today’s successful post')
         window = post_scroll_window(when)
         if not window or when < window[1]:
-            raise RuntimeError('The five-hour scroll window must finish before MEGA')
+            raise RuntimeError('The post scroll window must finish before MEGA')
         start = when.replace(hour=start_hour, minute=0, second=0,
                              microsecond=0).astimezone(ZoneInfo('UTC'))
         messages = await messages_in_topic(client, chat, topic, 150)
@@ -615,7 +624,7 @@ async def execute_post_scroll(client, when, dry):
                 slot_override=f'after-{anchor}',
                 window_end=window[1])
     except ScrollWindowEnded:
-        print('Five-hour scroll window ended; no further share')
+        print('Post scroll window ended; no further share')
 
 
 async def execute_hourly_scroll(client, when, dry, slot_override=None,
